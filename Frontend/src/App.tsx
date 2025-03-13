@@ -1,8 +1,9 @@
-import React, { useState} from "react";
-import Cewekk from "./assets/Cewek4.jpg";
+import React, { useState } from "react";
+import { Canvas } from "@react-three/fiber";
+// import Experience from "components/Experience";
 
 // Replace with your actual API key
-const API_KEY = "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" ;
+const API_KEY = "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";
 
 // Define the system message
 const systemMessage = {
@@ -73,8 +74,8 @@ const App: React.FC<InterviewProps> = () => {
       const data = await response.json();
       console.log(data);
 
-      const newMessage = {
-        message: data.choices[0].message.content,
+      const newMessage: Message = {
+        message: data.choices[0].message.content || "Pesan tidak tersedia",
         sender: "Maya",
         direction: "incoming",
       };
@@ -107,7 +108,9 @@ const App: React.FC<InterviewProps> = () => {
   return (
     <div className="h-screen w-full flex overflow-hidden">
       <div className="w-[40vw] bg-pink-300 flex flex-col items-center justify-center">
-        <img src={Cewekk} className="h-[85%] w-[95%] object-cover" />
+        <Canvas shadows camera={{ position: [0, 0, 1], fov: 30 }}>
+          {/* <Experience /> */}
+        </Canvas>
         <div className="h-[10%] flex justify-center items-center">
           <div className="text-[30px] mt-2 mr-2"> Maya Snow</div>
           {isTyping && (
@@ -132,7 +135,6 @@ const App: React.FC<InterviewProps> = () => {
               </div>
             </div>
           ))}
-         
         </div>
 
         <div className="chats input-container p-4 border-t-4 border-t-pink-300 bg-pink-300 h-[12vh] flex items-center">
@@ -156,7 +158,6 @@ const App: React.FC<InterviewProps> = () => {
             Send
           </button>
           <div className="w-[5%]">
-            {/* Text to Speech Toggle */}
             <input
               type="checkbox"
               checked={isSpeechEnabled}
