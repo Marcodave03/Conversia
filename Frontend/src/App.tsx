@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+
 import { Canvas } from "@react-three/fiber";
 import { Experience } from "./components/Experience";
 // import { Avatar } from "./components/Avatar";
@@ -108,9 +109,13 @@ const App: React.FC<InterviewProps> = () => {
 
   return (
     <div className="h-screen w-full flex overflow-hidden">
-      <div className="w-[40vw] bg-pink-300 flex flex-col items-center justify-center">
-        <Canvas shadows camera={{ position: [0, 1, 3], fov: 45 }}>
-          { <Experience />}
+      <div className="w-[100vw] bg-pink-300 flex flex-col items-center justify-center">
+        <Canvas
+                shadows
+                camera={{ position: [0, 0, 1], fov: 30 }}
+                style={{ width: "100%", height: "100%" }}
+              >
+                <Experience />
         </Canvas>
         <div className="h-[10%] flex justify-center items-center">
           <div className="text-[30px] mt-2 mr-2"> Maya Snow</div>
