@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Canvas } from "@react-three/fiber";
-// import Experience from "components/Experience";
+import { Experience } from "./components/Experience";
+// import { Avatar } from "./components/Avatar";
 
 // Replace with your actual API key
 const API_KEY = "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";
@@ -108,8 +109,8 @@ const App: React.FC<InterviewProps> = () => {
   return (
     <div className="h-screen w-full flex overflow-hidden">
       <div className="w-[40vw] bg-pink-300 flex flex-col items-center justify-center">
-        <Canvas shadows camera={{ position: [0, 0, 1], fov: 30 }}>
-          {/* <Experience /> */}
+        <Canvas shadows camera={{ position: [0, 1, 3], fov: 45 }}>
+          { <Experience />}
         </Canvas>
         <div className="h-[10%] flex justify-center items-center">
           <div className="text-[30px] mt-2 mr-2"> Maya Snow</div>
