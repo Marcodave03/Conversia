@@ -3,7 +3,7 @@ import { Canvas } from "@react-three/fiber";
 import { Leva } from "leva";
 import { Experience } from "./components/Experience";
 
-function Apps() {
+function AvTest() {
   return (
     <div className="w-[100vw] h-[100vh] relative">
       <Loader />
@@ -19,4 +19,4 @@ function Apps() {
   );
 }
 
-export default Apps;
+export default AvTest;

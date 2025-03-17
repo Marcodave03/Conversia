@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import Apps from './Apps';
+// import AvTest from './AvTest';
 import './App.css'
 // import { ChatProvider } from "./hooks/useChat";
 
@@ -12,7 +12,7 @@ root.render(
   <React.StrictMode>
     {/* <ChatProvider> */}
             <App interview_prompt='You are my girlfriend' />
-        {/* <Apps/> */}
+        {/* <AvTest/> */}
     {/* </ChatProvider> */}
 
   </React.StrictMode>

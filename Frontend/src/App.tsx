@@ -2,6 +2,8 @@ import React, { useState } from "react";
 
 import { Canvas } from "@react-three/fiber";
 import { Experience } from "./components/Experience";
+import bgImage from "./assets/house-bg.jpg";
+
 // import { Avatar } from "./components/Avatar";
 
 // Replace with your actual API key
@@ -108,69 +110,84 @@ const App: React.FC<InterviewProps> = () => {
   };
 
   return (
-    <div className="h-screen w-full flex overflow-hidden">
-      <div className="w-[100vw] bg-pink-300 flex flex-col items-center justify-center">
-        <Canvas
-                shadows
-                camera={{ position: [0, 0, 1], fov: 30 }}
-                style={{ width: "100%", height: "100%" }}
+    <div className="h-screen w-full flex flex-col overflow-hidden"
+    style={{
+      backgroundImage: `url(${bgImage})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+    }}
+    >
+      <div className="flex-1 flex">
+        <div className="w-full h-full relative">
+          {/* Chat messages */}
+          <div className="h-[85vh] overflow-y-auto space-y-4 p-4 absolute top-0 left-[35%] w-[30%] z-30">
+            {messages.map((msg, index) => (
+              <div
+                key={index}
+                className={`flex ${
+                  msg.direction === "outgoing" ? "justify-end" : "justify-start"
+                }`}
               >
-                <Experience />
-        </Canvas>
-        <div className="h-[10%] flex justify-center items-center">
-          <div className="text-[30px] mt-2 mr-2"> Maya Snow</div>
-          {isTyping && (
-            <div className="text-[30px] text-black">typing...</div>
-          )}
+                <div
+                  className={`max-w-[60%] p-3 rounded-xl text-lg ${
+                    msg.sender === "Maya" ? "bg-white" : "bg-blue-500 text-white"
+                  }`}
+                >
+                  {msg.message}
+                </div>
+              </div>
+            ))}
+            {isTyping && (
+              <div className="flex justify-start">
+                <div className="bg-white p-3 rounded-xl text-lg">
+                  typing...
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Avatar (with lower z-index) */}
+          <div className="absolute left-0 bottom-0 w-[40vw] h-[90vh] z-20 bg-transparent">
+            <Canvas
+              shadows
+              camera={{ position: [0, -0.5, 1], fov: 10 }}
+              style={{ width: "100%", height: "100%" }}
+              gl={{ alpha: true, preserveDrawingBuffer: true }}
+            >
+              <Experience />
+            </Canvas>
+          </div>
         </div>
       </div>
 
-      <div className="w-[70vw] bg-pink-200 overflow-hidden">
-        <div className="m-4 h-[85vh] overflow-y-auto space-y-4">
-          {messages.map((msg, index) => (
-            <div
-              key={index}
-              className={`flex ${msg.direction === "outgoing" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[60%] p-3 rounded-xl text-lg ${
-                  msg.sender === "Maya" ? "bg-white" : "bg-blue-500 text-white"
-                }`}
-              >
-                {msg.message}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="chats input-container p-4 border-t-4 border-t-pink-300 bg-pink-300 h-[12vh] flex items-center">
+      {/* Input Section */}
+      <div className="chats input-container p-4 border-t-4 border-t-pink-300 bg-pink-300 h-[12vh] flex items-center w-[30%] mx-auto rounded-xl">
+        <input
+          type="text"
+          value={userInput}
+          onChange={(e) => setUserInput(e.target.value)}
+          placeholder="Type your message here..."
+          className="border rounded px-4 py-2 w-[85%] text-lg mr-4"
+          onKeyPress={(e) => {
+            if (e.key === "Enter") {
+              handleSend();
+            }
+          }}
+        />
+        <button
+          onClick={handleSend}
+          disabled={isTyping}
+          className="bg-blue-500 text-white rounded px-4 py-2 w-[10%] h-[6vh] text-lg"
+        >
+          Send
+        </button>
+        <div className="w-[5%]">
           <input
-            type="text"
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            placeholder="Type your message here..."
-            className="border rounded px-4 py-2 w-[85%] text-lg mr-4"
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                handleSend();
-              }
-            }}
+            type="checkbox"
+            checked={isSpeechEnabled}
+            onChange={toggleSpeech}
+            className="w-12 h-12 ml-4 items-center"
           />
-          <button
-            onClick={handleSend}
-            disabled={isTyping}
-            className="bg-blue-500 text-white rounded px-4 py-2 w-[10%] h-[6vh] text-lg"
-          >
-            Send
-          </button>
-          <div className="w-[5%]">
-            <input
-              type="checkbox"
-              checked={isSpeechEnabled}
-              onChange={toggleSpeech}
-              className="w-12 h-12 ml-4 items-center"
-            />
-          </div>
         </div>
       </div>
     </div>
