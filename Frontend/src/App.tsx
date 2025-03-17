@@ -2,6 +2,7 @@ import React, { useState } from "react";
 
 import { Canvas } from "@react-three/fiber";
 import { Experience } from "./components/Experience";
+import Header from "./components/Header";
 import bgImage from "./assets/house-bg.jpg";
 
 // import { Avatar } from "./components/Avatar";
@@ -12,7 +13,7 @@ const API_KEY = "sk-proj-c5D-8ICaC2-IXoN-AKIxveYrRC3_yMEFipKPaL9zK6HNNwkoIeDweqv
 // Define the system message
 const systemMessage = {
   role: "system",
-  content: "Kamu jadi pacar perempuan aku, tanya kabar aku dari ${props.interview_prompt}. Gunakan kata kata yang informal dan ngobrol layaknya manusia. kalimat tidak perlu terlalu panjang",
+  content: "Kamu jadi pacar perempuan aku, tanya kabar tentang aku dan keseharianku. Gunakan kata kata yang informal dan ngobrol layaknya manusia. kalimat tidak perlu terlalu panjang",
 };
 
 // Define the message type
@@ -117,10 +118,20 @@ const App: React.FC<InterviewProps> = () => {
       backgroundPosition: "center",
     }}
     >
+
+      <Header />
+      
       <div className="flex-1 flex">
         <div className="w-full h-full relative">
+
           {/* Chat messages */}
-          <div className="h-[85vh] overflow-y-auto space-y-4 p-4 absolute top-0 left-[35%] w-[30%] z-30">
+          <div className="h-[70vh] max-h-[70vh] overflow-y-auto space-y-4 p-4 absolute top-[5%] left-[55%] w-[43%] z-30"
+              style={{
+                position: 'relative'
+              }}
+          >
+            <div className="fixed top-0 left-0 w-full h-32 bg-gradient-to-b from-[#000000]/30 to-transparent z-40 pointer-events-none"></div>
+
             {messages.map((msg, index) => (
               <div
                 key={index}
@@ -137,6 +148,7 @@ const App: React.FC<InterviewProps> = () => {
                 </div>
               </div>
             ))}
+
             {isTyping && (
               <div className="flex justify-start">
                 <div className="bg-white p-3 rounded-xl text-lg">
@@ -160,34 +172,40 @@ const App: React.FC<InterviewProps> = () => {
         </div>
       </div>
 
+
       {/* Input Section */}
-      <div className="absolute z-[10] bottom-4 right-10 chats input-container border-t-4 border-t-pink-300 bg-pink-300 h-[10vh] flex items-center w-[50%] mx-auto rounded-xl">
+      <div className="absolute z-[10] bottom-8 right-10 chats input-container bg-gray-800 bg-opacity-90 h-[7vh] flex items-center w-[43%] mx-auto rounded-full px-4">
         <input
           type="text"
           value={userInput}
           onChange={(e) => setUserInput(e.target.value)}
-          placeholder="Type your message here..."
-          className="border rounded px-4 py-2 w-[85%] text-lg mr-4"
+          placeholder="Start typing ..."
+          className="border-none bg-transparent w-full text-white placeholder-white placeholder-opacity-70 text-2xl focus:outline-none px-4 py-2"
           onKeyPress={(e) => {
             if (e.key === "Enter") {
               handleSend();
             }
           }}
+          style={{
+            paddingLeft: "50px", 
+            paddingTop: "4px",   
+          }}
         />
-        <button
-          onClick={handleSend}
-          disabled={isTyping}
-          className="bg-blue-500 text-white rounded px-4 py-2 w-[10%] h-[6vh] text-lg"
+
+
+        {/* Speech section */}
+        <div className="flex gap-4 items-center">
+        <span
+          className={`text-white text-4xl cursor-pointer ${isSpeechEnabled ? 'opacity-100' : 'opacity-50'}`}
+          onClick={toggleSpeech}
+          style={{
+            transform: 'scale(1.5)',
+            marginRight: '55px',     
+            marginTop: '2px',         
+          }}
         >
-          Send
-        </button>
-        <div className="w-[5%]">
-          <input
-            type="checkbox"
-            checked={isSpeechEnabled}
-            onChange={toggleSpeech}
-            className="w-12 h-12 ml-4 items-center"
-          />
+          🎙️
+        </span>
         </div>
       </div>
     </div>
