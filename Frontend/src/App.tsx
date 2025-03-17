@@ -147,7 +147,7 @@ const App: React.FC<InterviewProps> = () => {
           </div>
 
           {/* Avatar (with lower z-index) */}
-          <div className="absolute left-0 bottom-0 w-[40vw] h-[90vh] z-20 bg-transparent">
+          <div className="absolute left-0 bottom-0 w-[50vw] h-[100vh] z-20 bg-transparent">
             <Canvas
               shadows
               camera={{ position: [0, -0.5, 1], fov: 10 }}
@@ -161,7 +161,7 @@ const App: React.FC<InterviewProps> = () => {
       </div>
 
       {/* Input Section */}
-      <div className="chats input-container p-4 border-t-4 border-t-pink-300 bg-pink-300 h-[12vh] flex items-center w-[30%] mx-auto rounded-xl">
+      <div className="absolute z-[10] bottom-4 right-10 chats input-container border-t-4 border-t-pink-300 bg-pink-300 h-[10vh] flex items-center w-[50%] mx-auto rounded-xl">
         <input
           type="text"
           value={userInput}
