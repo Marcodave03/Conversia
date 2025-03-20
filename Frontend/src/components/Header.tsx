@@ -1,39 +1,61 @@
-import React from "react";
-import { FaHome, FaUser, FaBook, FaImages } from "react-icons/fa"; // Icons
-import logo from "../assets/conversia-lg.png"; 
+import React, { useState } from "react";
+import { FaUser, FaBook, FaImages } from "react-icons/fa";
+import About from "./About";
+import Memory from "./Memory";
+import Profile from "./Profile";
+import "../styling/Header.css";
 
 const Header: React.FC = () => {
+  const [showAbout, setShowAbout] = useState(false);
+  const [showMemory, setShowMemory] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+
   return (
-    <header
-      className="w-full h-24 flex items-center justify-center shadow-md relative"
-      style={{ backgroundColor: "#1b86ea" }}
-    >
-      {/* Logo Section (Positioned Absolutely for Centering Flexibility) */}
-      <img 
-        src={logo} 
-        alt="Logo" 
-        className="h-20 w-auto absolute left-6" 
-      />
+    <>
+      {/* Header with rounded corners and glass effect */}
+      <header
+        className="h-24 px-12 flex items-center justify-center shadow-md rounded-full"
+        style={{
+          backgroundColor: "rgba(236, 235, 235, 0.17)",
+          backdropFilter: "blur(30px)",
+          position: "absolute",
+          top: "3rem",
+          left: "50%",        
+          transform: "translateX(-50%)",
+          width: "fit-content",
+          zIndex: 50,
+        }}
+      >
+        <nav className="flex gap-8 text-3xl text-white">
 
-      {/* Navigation Buttons (Centered) */}
-      <nav className="flex gap-10">
-        <button className="flex items-center text-white text-lg hover:opacity-80">
-          <FaHome className="mr-2" /> Home
-        </button>
+          <button
+            onClick={() => setShowAbout(true)}
+            className="flex items-center hover:opacity-80 cursor-pointer"
+          >
+            <FaBook className="mr-2 text-teal-400 text-4xl" /> Activities
+          </button>
 
-        <button className="flex items-center text-white text-lg hover:opacity-80">
-          <FaBook className="mr-2" /> About
-        </button>
+          <button
+            onClick={() => setShowMemory(true)}
+            className="flex items-center hover:opacity-80 cursor-pointer"
+          >
+            <FaImages className="mr-2 text-blue-400 text-4xl" /> Memory
+          </button>
 
-        <button className="flex items-center text-white text-lg hover:opacity-80">
-          <FaImages className="mr-2" /> Memory
-        </button>
+          <button
+            onClick={() => setShowProfile(true)}
+            className="flex items-center hover:opacity-80 cursor-pointer"
+          >
+            <FaUser className="mr-2 text-yellow-400 text-4xl" /> Profile
+          </button>
+        </nav>
+      </header>
 
-        <button className="flex items-center text-white text-lg hover:opacity-80">
-          <FaUser className="mr-2" /> Profile
-        </button>
-      </nav>
-    </header>
+      {/* Popup Components */}
+      {showAbout && <About onClose={() => setShowAbout(false)} />}
+      {showMemory && <Memory onClose={() => setShowMemory(false)} />}
+      {showProfile && <Profile onClose={() => setShowProfile(false)} />}
+    </>
   );
 };
 

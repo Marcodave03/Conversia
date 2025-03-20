@@ -4,10 +4,9 @@ import { Canvas } from "@react-three/fiber";
 import { Experience } from "./components/Experience";
 import Header from "./components/Header";
 import bgImage from "./assets/house-bg.jpg";
+import logo from "./assets/conversia-lg.png";
 
-// import { Avatar } from "./components/Avatar";
 
-// Replace with your actual API key
 const API_KEY = "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";
 
 // Define the system message
@@ -118,6 +117,14 @@ const App: React.FC<InterviewProps> = () => {
       backgroundPosition: "center",
     }}
     >
+      <a href="/" className="absolute top-1 left-4 z-50">
+        <img
+          src={logo}
+          alt="Conversia Logo"
+          style={{ height: "150px", width: "auto" }}
+          className="cursor-pointer shadow-lg rounded-full hover:opacity-80 transition-opacity duration-200"
+        />
+      </a>
 
       <Header />
       
