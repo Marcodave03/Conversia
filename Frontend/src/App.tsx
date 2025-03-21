@@ -1,39 +1,45 @@
 import React, { useState } from "react";
-
 import { Canvas } from "@react-three/fiber";
 import { Experience } from "./components/Experience";
 import Header from "./components/Header";
 import bgImage from "./assets/house-bg.jpg";
 import logo from "./assets/conversia-lg.png";
-
+import { useAuth } from '../src/hooks/useAuth';
+import { useNavigate } from "react-router-dom";
 
 const API_KEY = "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";
 
-// Define the system message
 const systemMessage = {
   role: "system",
-  content: "Kamu jadi pacar perempuan aku, tanya kabar tentang aku dan keseharianku. Gunakan kata kata yang informal dan ngobrol layaknya manusia. kalimat tidak perlu terlalu panjang",
+  content:
+    "Kamu jadi pacar perempuan aku, tanya kabar tentang aku dan keseharianku. Gunakan kata kata yang informal dan ngobrol layaknya manusia. kalimat tidak perlu terlalu panjang",
 };
 
-// Define the message type
 type Message = {
   message: string;
   sender: string;
   direction: "incoming" | "outgoing";
 };
 
-// Define the props type
 type InterviewProps = {
   interview_prompt: string | undefined;
 };
 
 const App: React.FC<InterviewProps> = () => {
+  const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [userInput, setUserInput] = useState("");
-  const [isSpeechEnabled, setIsSpeechEnabled] = useState(false); // Add state for toggle
+  const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
 
-  // Handle sending a message
+  // Redirect unauthorized users
+  if (!isAuthenticated) {
+    navigate('/landing');
+    return null;
+  }
+
   const handleSend = async () => {
     if (!userInput.trim()) return;
 
@@ -51,7 +57,6 @@ const App: React.FC<InterviewProps> = () => {
     await processMessageToChatGPT(newMessages);
   };
 
-  // Process messages for ChatGPT
   async function processMessageToChatGPT(chatMessages: Message[]) {
     const apiMessages = chatMessages.map((messageObject) => {
       const role = messageObject.sender === "Maya" ? "assistant" : "user";
@@ -76,7 +81,6 @@ const App: React.FC<InterviewProps> = () => {
         }
       );
       const data = await response.json();
-      console.log(data);
 
       const newMessage: Message = {
         message: data.choices[0].message.content || "Pesan tidak tersedia",
@@ -86,7 +90,6 @@ const App: React.FC<InterviewProps> = () => {
 
       setMessages((prevMessages) => [...prevMessages, newMessage]);
 
-      // If speech is enabled, read the message aloud
       if (isSpeechEnabled) {
         speakMessage(newMessage.message);
       }
@@ -97,25 +100,24 @@ const App: React.FC<InterviewProps> = () => {
     }
   }
 
-  // Function to speak the message
   const speakMessage = (message: string) => {
     const speech = new SpeechSynthesisUtterance(message);
-    speech.lang = "id-ID"; // Set language to Indonesian
+    speech.lang = "id-ID";
     window.speechSynthesis.speak(speech);
   };
 
-  // Toggle text-to-speech
   const toggleSpeech = () => {
     setIsSpeechEnabled(!isSpeechEnabled);
   };
 
   return (
-    <div className="h-screen w-full flex flex-col overflow-hidden"
-    style={{
-      backgroundImage: `url(${bgImage})`,
-      backgroundSize: "cover",
-      backgroundPosition: "center",
-    }}
+    <div
+      className="h-screen w-full flex flex-col overflow-hidden"
+      style={{
+        backgroundImage: `url(${bgImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
     >
       <a href="/" className="absolute top-1 left-4 z-50">
         <img
@@ -127,12 +129,19 @@ const App: React.FC<InterviewProps> = () => {
       </a>
 
       <Header />
-      
+
+      <button
+        className="absolute top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg z-[50]"
+        onClick={logout}
+      >
+        Logout
+      </button>
+
       <div className="flex-1 flex">
         <div className="w-full h-full relative">
 
           {/* Chat messages */}
-          <div className="h-[70vh] max-h-[70vh] overflow-y-auto space-y-4 p-4 absolute top-[5%] left-[55%] w-[43%] z-30"
+          <div className="h-[70vh] max-h-[70vh] overflow-y-auto space-y-4 p-4 absolute top-[10%] left-[55%] w-[43%] z-30"
               style={{
                 position: 'relative'
               }}
