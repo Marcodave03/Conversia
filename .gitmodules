@@ -1,0 +1,3 @@
+[submodule "Backend/r3f-virtual-girlfriend-backend"]
+	path = Backend/r3f-virtual-girlfriend-backend
+	url = https://github.com/JugBones/r3f-virtual-girlfriend-backend.git
