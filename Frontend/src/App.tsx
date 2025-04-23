@@ -7,13 +7,6 @@ import logo from "./assets/conversia-lg.png";
 import { useAuth } from '../src/hooks/useAuth';
 import { useNavigate } from "react-router-dom";
 
-const API_KEY = "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";
-
-const systemMessage = {
-  role: "system",
-  content:
-    "Kamu jadi pacar perempuan aku, tanya kabar tentang aku dan keseharianku. Gunakan kata kata yang informal dan ngobrol layaknya manusia. kalimat tidak perlu terlalu panjang",
-};
 
 type Message = {
   message: string;
@@ -58,53 +51,40 @@ const App: React.FC<InterviewProps> = () => {
   };
 
   async function processMessageToChatGPT(chatMessages: Message[]) {
-    const apiMessages = chatMessages.map((messageObject) => {
-      const role = messageObject.sender === "Maya" ? "assistant" : "user";
-      return { role, content: messageObject.message };
-    });
-
-    const apiRequestBody = {
-      model: "gpt-3.5-turbo",
-      messages: [systemMessage, ...apiMessages],
-    };
-
     try {
-      const response = await fetch(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(apiRequestBody),
-        }
-      );
-      const data = await response.json();
-
+      const lastMessage = chatMessages[chatMessages.length - 1];
+  
+      const response = await fetch("http://localhost:3000/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: lastMessage.message }),
+      });
+  
+      // Backend sends an audio file as a stream + X-Chat-Text header
+      const audioBlob = await response.blob();
+      const chatText = decodeURIComponent(response.headers.get("X-Chat-Text") || "Maya belum bicara ya...");
+      const audioUrl = URL.createObjectURL(audioBlob);
+  
       const newMessage: Message = {
-        message: data.choices[0].message.content || "Pesan tidak tersedia",
+        message: chatText,
         sender: "Maya",
         direction: "incoming",
       };
-
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
-
+  
+      setMessages((prev) => [...prev, newMessage]);
+  
       if (isSpeechEnabled) {
-        speakMessage(newMessage.message);
+        const audio = new Audio(audioUrl);
+        audio.play();
       }
     } catch (error) {
-      console.error("Error processing message:", error);
+      console.error("Error talking to backend:", error);
     } finally {
       setIsTyping(false);
     }
   }
-
-  const speakMessage = (message: string) => {
-    const speech = new SpeechSynthesisUtterance(message);
-    speech.lang = "id-ID";
-    window.speechSynthesis.speak(speech);
-  };
 
   const toggleSpeech = () => {
     setIsSpeechEnabled(!isSpeechEnabled);

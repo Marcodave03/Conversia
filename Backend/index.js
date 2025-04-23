@@ -66,20 +66,25 @@
 
 
 
+import dotenv from "dotenv";
+dotenv.config();
+
+console.log("ENV CHECK:", {
+  OPENAI: process.env.OPENAI_API_KEY,
+  ELEVEN: process.env.ELEVEN_LABS_API_KEY
+});
+
 import express from "express";
 import cors from "cors";
 import http from "http";
-import dotenv from "dotenv";
 import sequelize from "./config/Database.js";
 import "./models/Association.js";
 import Route from "./route/Route.js";
-
 import { exec } from "child_process";
 import voice from "elevenlabs-node";
 import { promises as fs } from "fs";
 import OpenAI from "openai";
 
-dotenv.config();
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
@@ -159,7 +164,7 @@ app.post("/chat", async (req, res) => {
     });
   }
 
-  if (!elevenLabsApiKey || openai.apiKey === "-") {
+  if (!elevenLabsApiKey || !process.env.OPENAI_API_KEY) {
     return res.send({
       messages: [
         {
