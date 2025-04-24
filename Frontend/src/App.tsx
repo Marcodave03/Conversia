@@ -54,7 +54,7 @@ const App: React.FC<InterviewProps> = () => {
     try {
       const lastMessage = chatMessages[chatMessages.length - 1];
   
-      const response = await fetch("http://localhost:3000/chat", {
+      const response = await fetch("http://localhost:5555/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
