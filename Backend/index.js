@@ -16,7 +16,8 @@ import { exec } from "child_process";
 import voice from "elevenlabs-node";
 import { promises as fs } from "fs";
 import OpenAI from "openai";
-import fetch from "node-fetch";
+// import fetch from "node-fetch";
+
 
 
 
@@ -71,18 +72,25 @@ async function elevenLabsTTS(apiKey, voiceId, text, outputFile) {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      text: text
+      text: text,
+      model_id: "eleven_monolingual_v1",
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.5
+      }
     }),
   });
 
   if (!response.ok) {
-    const errorBody = await response.text(); // log this to understand the error
+    const errorBody = await response.text();
     throw new Error(`Failed TTS: ${response.status} ${response.statusText} - ${errorBody}`);
   }
 
-  const buffer = await response.buffer();
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
   await fs.writeFile(outputFile, buffer);
 }
+
 
 
 
