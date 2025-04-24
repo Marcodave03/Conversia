@@ -36,6 +36,8 @@ const port = process.env.PORT;
 const server = http.createServer(app);
 
 app.use("/api/conversia", Route);
+app.use('/audios', express.static('audios'));
+
 
 // Helper Functions
 const execCommand = (command) => {

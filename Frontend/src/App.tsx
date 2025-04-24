@@ -25,6 +25,7 @@ const App: React.FC<InterviewProps> = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [userInput, setUserInput] = useState("");
+  const [typingText, setTypingText] = useState("");
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
 
   // Redirect unauthorized users
@@ -62,29 +63,64 @@ const App: React.FC<InterviewProps> = () => {
         body: JSON.stringify({ message: lastMessage.message }),
       });
   
-      // Backend sends an audio file as a stream + X-Chat-Text header
-      const audioBlob = await response.blob();
-      const chatText = decodeURIComponent(response.headers.get("X-Chat-Text") || "Maya belum bicara ya...");
-      const audioUrl = URL.createObjectURL(audioBlob);
+      const data = await response.json();
+      const fullText = data.message?.text || "Maya belum bicara ya...";
+      const audioUrl = "http://localhost:5555/audios/response.mp3";
   
-      const newMessage: Message = {
-        message: chatText,
-        sender: "Maya",
-        direction: "incoming",
+      setTypingText(""); // Clear any previous typing
+      setIsTyping(true);
+  
+      // Initialize audio
+      let audio: HTMLAudioElement | null = null;
+      let audioDuration = 0;
+  
+      if (isSpeechEnabled && audioUrl) {
+        audio = new Audio(audioUrl);
+        audio.onerror = (e) => console.error("Failed to play audio:", e);
+        await audio.play().catch((err) => console.warn("Autoplay blocked:", err));
+        audioDuration = audio.duration * 1000 || 2000; // fallback duration
+      }
+  
+      // Determine typing speed based on audio duration
+      const duration = audioDuration || fullText.length * 50; // fallback
+      const interval = duration / fullText.length;
+  
+      let index = 0;
+      let lastTime = performance.now();
+  
+      const typeChar = (time: number) => {
+        if (time - lastTime >= interval && index < fullText.length) {
+          setTypingText((prev) => prev + fullText.charAt(index));
+          index++;
+          lastTime = time;
+        }
+  
+        if (index < fullText.length) {
+          requestAnimationFrame(typeChar);
+        } else {
+          // Typing complete
+          setMessages((prev) => [
+            ...prev,
+            {
+              message: fullText,
+              sender: "Maya",
+              direction: "incoming",
+            },
+          ]);
+          setTypingText("");
+          setIsTyping(false);
+        }
       };
   
-      setMessages((prev) => [...prev, newMessage]);
-  
-      if (isSpeechEnabled) {
-        const audio = new Audio(audioUrl);
-        audio.play();
-      }
+      requestAnimationFrame(typeChar);
     } catch (error) {
       console.error("Error talking to backend:", error);
-    } finally {
       setIsTyping(false);
     }
   }
+  
+  
+  
 
   const toggleSpeech = () => {
     setIsSpeechEnabled(!isSpeechEnabled);
@@ -145,10 +181,10 @@ const App: React.FC<InterviewProps> = () => {
               </div>
             ))}
 
-            {isTyping && (
+            {isTyping && typingText && (
               <div className="flex justify-start">
                 <div className="bg-white p-3 rounded-xl text-lg">
-                  typing...
+                  {typingText}
                 </div>
               </div>
             )}
