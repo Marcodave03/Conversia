@@ -84,6 +84,8 @@ import { exec } from "child_process";
 import voice from "elevenlabs-node";
 import { promises as fs } from "fs";
 import OpenAI from "openai";
+import fetch from "node-fetch";
+
 
 
 const openai = new OpenAI({
@@ -129,6 +131,32 @@ const audioFileToBase64 = async (file) => {
 };
 
 // ElevenLabs: Get available voices
+async function elevenLabsTTS(apiKey, voiceId, text, outputFile) {
+  const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+    method: "POST",
+    headers: {
+      "xi-api-key": apiKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      text: text,
+      model_id: "eleven_monolingual_v1", // or your chosen model
+      voice_settings: {
+        stability: 0.5,
+        similarity_boost: 0.5
+      }
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed TTS: ${response.status} ${response.statusText}`);
+  }
+
+  const buffer = await response.buffer();
+  await fs.writeFile(outputFile, buffer);
+}
+
+
 app.get("/voices", async (req, res) => {
   try {
     const voices = await voice.getVoices(elevenLabsApiKey);
@@ -213,7 +241,8 @@ app.post("/chat", async (req, res) => {
       const message = messages[0]; // send only the first message
       const fileName = `audios/response.mp3`;
 
-      await voice.textToSpeech(elevenLabsApiKey, voiceID, fileName, message.text);
+      await elevenLabsTTS(elevenLabsApiKey, voiceID, message.text, fileName);
+
 
       // optional: create lipsync if needed
       // await lipSyncMessage(0); // if needed

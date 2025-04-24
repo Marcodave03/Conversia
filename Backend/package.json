@@ -3777,6 +3777,7 @@
         "express": "^4.21.2",
         "fs": "^0.0.1-security",
         "mysql2": "^3.13.0",
+        "node-fetch": "^3.3.2",
         "openai": "^4.95.1",
         "sequelize": "^6.37.6"
     }
