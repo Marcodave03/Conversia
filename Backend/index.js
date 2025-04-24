@@ -84,7 +84,8 @@ import { exec } from "child_process";
 import voice from "elevenlabs-node";
 import { promises as fs } from "fs";
 import OpenAI from "openai";
-import fetch from "node-fetch";
+// import fetch from "node-fetch";
+
 
 
 
@@ -241,7 +242,7 @@ app.post("/chat", async (req, res) => {
       const message = messages[0]; // send only the first message
       const fileName = `audios/response.mp3`;
 
-      await elevenLabsTTS(elevenLabsApiKey, voiceID, message.text, fileName);
+      await voice.textToSpeech(elevenLabsApiKey, voiceID, fileName, message.text);
 
 
       // optional: create lipsync if needed
