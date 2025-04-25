@@ -27,6 +27,8 @@ const App: React.FC<InterviewProps> = () => {
   const [userInput, setUserInput] = useState("");
   const [typingText, setTypingText] = useState("");
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
 
   // Redirect unauthorized users
   if (!isAuthenticated) {
@@ -75,11 +77,26 @@ const App: React.FC<InterviewProps> = () => {
       let audioDuration = 0;
   
       if (isSpeechEnabled && audioUrl) {
-        audio = new Audio(audioUrl);
-        audio.onerror = (e) => console.error("Failed to play audio:", e);
-        await audio.play().catch((err) => console.warn("Autoplay blocked:", err));
-        audioDuration = audio.duration * 1000 || 2000; // fallback duration
-      }
+        try {
+          // Bypass browser cache by appending a timestamp
+          const freshAudioUrl = `${audioUrl}?t=${new Date().getTime()}`;
+          const audioResponse = await fetch(freshAudioUrl);
+          const audioBlob = await audioResponse.blob();
+          const audioObjectUrl = URL.createObjectURL(audioBlob);
+      
+          audio = new Audio(audioObjectUrl);
+
+          // add audio event listeners
+          audio.onplay = () => setIsSpeaking(true);
+          audio.onended = () => setIsSpeaking(false);
+
+          await audio.play();
+      
+          audioDuration = audio.duration * 1000 || 2000; // Use duration to calculate typing delay
+        } catch (err) {
+          console.error("Error fetching or playing audio:", err);
+        }
+      }      
   
       // Determine typing speed based on audio duration
       const duration = audioDuration || fullText.length * 50; // fallback
@@ -228,16 +245,13 @@ const App: React.FC<InterviewProps> = () => {
         {/* Speech section */}
         <div className="flex gap-4 items-center">
         <span
-          className={`text-white text-4xl cursor-pointer ${isSpeechEnabled ? 'opacity-100' : 'opacity-50'}`}
-          onClick={toggleSpeech}
-          style={{
-            transform: 'scale(1.5)',
-            marginRight: '55px',     
-            marginTop: '2px',         
-          }}
-        >
-          🎙️
-        </span>
+            className={`text-white text-4xl cursor-pointer transition-opacity duration-300 ${
+              isSpeechEnabled ? 'opacity-100' : 'opacity-50'
+            } ${isSpeaking ? 'animate-pulse' : ''}`}
+            onClick={toggleSpeech}
+          >
+            🎙️
+          </span>
         </div>
       </div>
     </div>
