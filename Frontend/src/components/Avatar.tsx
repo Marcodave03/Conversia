@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { button, useControls } from "leva";
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-// import { useChat } from "../hooks/useChat";
+import { useChat } from "../hooks/useChat";
 import { GLTF } from "three-stdlib";
 
 // Define types for facial expressions
@@ -188,20 +188,20 @@ export function Avatar(props: AvatarProps): JSX.Element {
 
   const [lipsync, setLipsync] = useState<Lipsync | undefined>();
 
-  // useEffect(() => {
-  //   console.log(message);
-  //   if (!message) {
-  //     setAnimation("Idle");
-  //     return;
-  //   }
-  //   setAnimation(message.animation);
-  //   setFacialExpression(message.facialExpression);
-  //   setLipsync(message.lipsync);
-  //   const audio = new Audio("data:audio/mp3;base64," + message.audio);
-  //   audio.play();
-  //   setAudio(audio);
-  //   audio.onended = onMessagePlayed;
-  // }, [message, onMessagePlayed]);
+  useEffect(() => {
+    console.log(message);
+    if (!message) {
+      setAnimation("Idle");
+      return;
+    }
+    setAnimation(message.animation);
+    setFacialExpression(message.facialExpression);
+    setLipsync(message.lipsync);
+    const audio = new Audio("data:audio/mp3;base64," + message.audio);
+    audio.play();
+    setAudio(audio);
+    audio.onended = onMessagePlayed;
+  }, [message, onMessagePlayed]);
 
   const { animations } = useGLTF("/models/animations.glb") as unknown as GLTFResult & {
     animations: THREE.AnimationClip[];
@@ -289,23 +289,23 @@ export function Avatar(props: AvatarProps): JSX.Element {
     }
 
     const appliedMorphTargets: string[] = [];
-    // if (message && lipsync && audio) {
-    //   const currentAudioTime = audio.currentTime;
-    //   for (let i = 0; i < lipsync.mouthCues.length; i++) {
-    //     const mouthCue = lipsync.mouthCues[i];
-    //     if (
-    //       currentAudioTime >= mouthCue.start &&
-    //       currentAudioTime <= mouthCue.end
-    //     ) {
-    //       const viseme = corresponding[mouthCue.value];
-    //       if (viseme) {
-    //         appliedMorphTargets.push(viseme);
-    //         lerpMorphTarget(viseme, 1, 0.2);
-    //         break;
-    //       }
-    //     }
-    //   }
-    // }
+    if (message && lipsync && audio) {
+      const currentAudioTime = audio.currentTime;
+      for (let i = 0; i < lipsync.mouthCues.length; i++) {
+        const mouthCue = lipsync.mouthCues[i];
+        if (
+          currentAudioTime >= mouthCue.start &&
+          currentAudioTime <= mouthCue.end
+        ) {
+          const viseme = corresponding[mouthCue.value];
+          if (viseme) {
+            appliedMorphTargets.push(viseme);
+            lerpMorphTarget(viseme, 1, 0.2);
+            break;
+          }
+        }
+      }
+    }
 
     Object.values(corresponding).forEach((value) => {
       if (appliedMorphTargets.includes(value)) {
@@ -315,50 +315,50 @@ export function Avatar(props: AvatarProps): JSX.Element {
     });
   });
 
-  // useControls("FacialExpressions", {
-  //   chat: button(() => {
-  //     if (chat) chat();
-  //   }),
-  //   winkLeft: button(() => {
-  //     setWinkLeft(true);
-  //     setTimeout(() => setWinkLeft(false), 300);
-  //   }),
-  //   winkRight: button(() => {
-  //     setWinkRight(true);
-  //     setTimeout(() => setWinkRight(false), 300);
-  //   }),
-  //   animation: {
-  //     value: animation,
-  //     options: animations.map((a) => a.name),
-  //     onChange: (value: string) => setAnimation(value),
-  //   },
-  //   facialExpression: {
-  //     options: Object.keys(facialExpressions),
-  //     onChange: (value: string) => setFacialExpression(value),
-  //   },
-  //   enableSetupMode: button(() => {
-  //     setupMode = true;
-  //   }),
-  //   disableSetupMode: button(() => {
-  //     setupMode = false;
-  //   }),
-  //   logMorphTargetValues: button(() => {
-  //     const emotionValues: { [key: string]: number } = {};
-  //     if (nodes.EyeLeft.morphTargetDictionary) {
-  //       Object.keys(nodes.EyeLeft.morphTargetDictionary).forEach((key) => {
-  //         if (key === "eyeBlinkLeft" || key === "eyeBlinkRight") {
-  //           return; // eyes wink/blink are handled separately
-  //         }
-  //         const index = nodes.EyeLeft.morphTargetDictionary[key];
-  //         const value = nodes.EyeLeft.morphTargetInfluences[index];
-  //         if (value > 0.01) {
-  //           emotionValues[key] = value;
-  //         }
-  //       });
-  //     }
-  //     console.log(JSON.stringify(emotionValues, null, 2));
-  //   }),
-  // });
+  useControls("FacialExpressions", {
+    chat: button(() => {
+      if (chat) chat();
+    }),
+    winkLeft: button(() => {
+      setWinkLeft(true);
+      setTimeout(() => setWinkLeft(false), 300);
+    }),
+    winkRight: button(() => {
+      setWinkRight(true);
+      setTimeout(() => setWinkRight(false), 300);
+    }),
+    animation: {
+      value: animation,
+      options: animations.map((a) => a.name),
+      onChange: (value: string) => setAnimation(value),
+    },
+    facialExpression: {
+      options: Object.keys(facialExpressions),
+      onChange: (value: string) => setFacialExpression(value),
+    },
+    enableSetupMode: button(() => {
+      setupMode = true;
+    }),
+    disableSetupMode: button(() => {
+      setupMode = false;
+    }),
+    logMorphTargetValues: button(() => {
+      const emotionValues: { [key: string]: number } = {};
+      if (nodes.EyeLeft.morphTargetDictionary) {
+        Object.keys(nodes.EyeLeft.morphTargetDictionary).forEach((key) => {
+          if (key === "eyeBlinkLeft" || key === "eyeBlinkRight") {
+            return; // eyes wink/blink are handled separately
+          }
+          const index = nodes.EyeLeft.morphTargetDictionary[key];
+          const value = nodes.EyeLeft.morphTargetInfluences[index];
+          if (value > 0.01) {
+            emotionValues[key] = value;
+          }
+        });
+      }
+      console.log(JSON.stringify(emotionValues, null, 2));
+    }),
+  });
 
   const [, set] = useControls("MorphTarget", () => {
     if (!nodes.EyeLeft.morphTargetDictionary) return {};

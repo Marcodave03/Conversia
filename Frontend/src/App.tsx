@@ -30,6 +30,8 @@ const App: React.FC<InterviewProps> = () => {
   const [userInput, setUserInput] = useState("");
   const [typingText, setTypingText] = useState("");
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
 
   // Redirect unauthorized users
   if (!isAuthenticated) {
@@ -77,42 +79,26 @@ const App: React.FC<InterviewProps> = () => {
       let audio: HTMLAudioElement | null = null;
   
       if (isSpeechEnabled && audioUrl) {
-        console.log("🎧 Trying to load audio from:", audioUrl);
-  
         try {
-          audio = new Audio(audioUrl);
-          audio.volume = 1.0;
-          audio.muted = false;
-  
-          // Event logs
-          audio.addEventListener("play", () => console.log("🔊 Audio started playing"));
-          audio.addEventListener("ended", () => console.log("✅ Audio finished"));
-          audio.addEventListener("error", (e) => console.error("❌ Audio error:", e));
-  
-          // Ensure audio loads before playing (wait for metadata)
-          await new Promise<void>((resolve, reject) => {
-            audio!.addEventListener("loadedmetadata", () => {
-              audioDuration = audio!.duration * 1000;
-              resolve();
-            });
-  
-            audio!.addEventListener("error", () => {
-              reject(new Error("Audio failed to load"));
-            });
-  
-            // Fallback timeout if metadata doesn't load
-            setTimeout(() => reject(new Error("Timeout loading audio metadata")), 3000);
-          });
-  
-          // Try playing the audio
-          await audio.play().catch((err) => {
-            console.warn("❌ Autoplay blocked or audio play failed:", err);
-          });
-  
+          // Bypass browser cache by appending a timestamp
+          const freshAudioUrl = `${audioUrl}?t=${new Date().getTime()}`;
+          const audioResponse = await fetch(freshAudioUrl);
+          const audioBlob = await audioResponse.blob();
+          const audioObjectUrl = URL.createObjectURL(audioBlob);
+      
+          audio = new Audio(audioObjectUrl);
+
+          // add audio event listeners
+          audio.onplay = () => setIsSpeaking(true);
+          audio.onended = () => setIsSpeaking(false);
+
+          await audio.play();
+      
+          audioDuration = audio.duration * 1000 || 2000; // Use duration to calculate typing delay
         } catch (err) {
-          console.error("🎙️ Error handling audio:", err);
+          console.error("Error fetching or playing audio:", err);
         }
-      }
+      }      
   
       // Fallback duration if audio not loaded
       const duration = audioDuration || fullText.length * 50;
@@ -265,16 +251,13 @@ const App: React.FC<InterviewProps> = () => {
         {/* Speech section */}
         <div className="flex gap-4 items-center">
         <span
-          className={`text-white text-4xl cursor-pointer ${isSpeechEnabled ? 'opacity-100' : 'opacity-50'}`}
-          onClick={toggleSpeech}
-          style={{
-            transform: 'scale(1.5)',
-            marginRight: '55px',     
-            marginTop: '2px',         
-          }}
-        >
-          🎙️
-        </span>
+            className={`text-white text-4xl cursor-pointer transition-opacity duration-300 ${
+              isSpeechEnabled ? 'opacity-100' : 'opacity-50'
+            } ${isSpeaking ? 'animate-pulse' : ''}`}
+            onClick={toggleSpeech}
+          >
+            🎙️
+          </span>
         </div>
       </div>
     </div>
