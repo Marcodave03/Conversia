@@ -112,6 +112,7 @@ app.post("/chat", async (req, res) => {
     elevenlabs: null,
     message: null,
     audioBase64: null,
+    lipsync: null,
     error: null,
   };
 
@@ -133,30 +134,54 @@ app.post("/chat", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: `You are a virtual girlfriend. Reply with a JSON array of messages. Each message has a text, facialExpression, and animation.`,
+          content: `You are a virtual girlfriend. Reply with a JSON object containing text, facialExpression, and animation properties.`,
         },
         { role: "user", content: userMessage },
       ],
     });
 
-    const parsed = JSON.parse(completion.choices[0].message.content);
-    let message = parsed.messages?.[0] || parsed[0] || parsed;
-    debug.message = message;
+    const response = JSON.parse(completion.choices[0].message.content);
+    debug.message = response;
     debug.openai = "success";
 
     // === 2. TEXT TO SPEECH ===
     const fileName = `audios/response.mp3`;
+    const wavFileName = `audios/response.wav`;
+    const lipsyncFileName = `audios/response.json`;
+    
     try {
-      await elevenLabsTTS(elevenLabsApiKey, voiceID, message.text, fileName);
+      // Generate speech
+      await elevenLabsTTS(elevenLabsApiKey, voiceID, response.text, fileName);
+      
+      // Convert to WAV for rhubarb
+      await execCommand(`ffmpeg -y -i ${fileName} ${wavFileName}`);
+      
+      // Generate lipsync data
+      await execCommand(`./bin/rhubarb -f json -o ${lipsyncFileName} ${wavFileName} -r phonetic`);
+      
+      // Read lipsync data
+      const lipsyncData = await readJsonTranscript(lipsyncFileName);
+      
       debug.audioBase64 = await audioFileToBase64(fileName);
+      debug.lipsync = lipsyncData;
       debug.elevenlabs = "success";
+      
+      // Send response with all needed data
+      res.send({
+        message: {
+          text: response.text,
+          facialExpression: response.facialExpression || "default",
+          animation: response.animation || "Idle",
+          lipsync: lipsyncData,
+          audio: debug.audioBase64
+        }
+      });
     } catch (err) {
-      console.error("TTS failed:", err);
+      console.error("TTS/Lipsync failed:", err);
       debug.elevenlabs = "failed";
-      debug.error = `TTS Error: ${err.message}`;
+      debug.error = `TTS/Lipsync Error: ${err.message}`;
+      res.status(500).send(debug);
     }
-
-    res.send(debug);
   } catch (err) {
     console.error("Error in /chat:", err);
     debug.openai = "failed";
