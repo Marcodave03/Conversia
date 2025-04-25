@@ -71,14 +71,30 @@ const App: React.FC<InterviewProps> = () => {
       setIsTyping(true);
   
       // Initialize audio
-      let audio: HTMLAudioElement | null = null;
+      // let audio: HTMLAudioElement | null = null;
       let audioDuration = 0;
   
       if (isSpeechEnabled && audioUrl) {
-        audio = new Audio(audioUrl);
-        audio.onerror = (e) => console.error("Failed to play audio:", e);
-        await audio.play().catch((err) => console.warn("Autoplay blocked:", err));
-        audioDuration = audio.duration * 1000 || 2000; // fallback duration
+        const audioElement = new Audio(audioUrl);
+        audioElement.onerror = (e) => console.error("Failed to load/play audio:", e);
+      
+        // Wait until the audio is ready to play
+        audioElement.oncanplaythrough = () => {
+          const playPromise = audioElement!.play();
+      
+          if (playPromise !== undefined) {
+            playPromise
+              .then(() => {
+                console.log("Audio playback started");
+              })
+              .catch((err) => {
+                console.warn("Audio autoplay blocked:", err);
+              });
+          }
+      
+          // Duration is only accurate after canplaythrough
+          audioDuration = audioElement.duration * 1000 || 2000;
+        };
       }
   
       // Determine typing speed based on audio duration
