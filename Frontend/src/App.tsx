@@ -6,6 +6,8 @@ import bgImage from "./assets/house-bg.jpg";
 import logo from "./assets/conversia-lg.png";
 import { useAuth } from '../src/hooks/useAuth';
 import { useNavigate } from "react-router-dom";
+import { ConnectButton, useWallet } from "@suiet/wallet-kit";
+import "@suiet/wallet-kit/style.css"; 
 
 
 type Message = {
@@ -19,6 +21,7 @@ type InterviewProps = {
 };
 
 const App: React.FC<InterviewProps> = () => {
+  const wallet = useWallet();
   const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -67,22 +70,52 @@ const App: React.FC<InterviewProps> = () => {
       const fullText = data.message?.text || "Maya belum bicara ya...";
       const audioUrl = "http://localhost:5555/audios/response.mp3";
   
-      setTypingText(""); // Clear any previous typing
+      setTypingText(""); // Reset before typing
       setIsTyping(true);
   
-      // Initialize audio
-      let audio: HTMLAudioElement | null = null;
       let audioDuration = 0;
+      let audio: HTMLAudioElement | null = null;
   
       if (isSpeechEnabled && audioUrl) {
-        audio = new Audio(audioUrl);
-        audio.onerror = (e) => console.error("Failed to play audio:", e);
-        await audio.play().catch((err) => console.warn("Autoplay blocked:", err));
-        audioDuration = audio.duration * 1000 || 2000; // fallback duration
+        console.log("🎧 Trying to load audio from:", audioUrl);
+  
+        try {
+          audio = new Audio(audioUrl);
+          audio.volume = 1.0;
+          audio.muted = false;
+  
+          // Event logs
+          audio.addEventListener("play", () => console.log("🔊 Audio started playing"));
+          audio.addEventListener("ended", () => console.log("✅ Audio finished"));
+          audio.addEventListener("error", (e) => console.error("❌ Audio error:", e));
+  
+          // Ensure audio loads before playing (wait for metadata)
+          await new Promise<void>((resolve, reject) => {
+            audio!.addEventListener("loadedmetadata", () => {
+              audioDuration = audio!.duration * 1000;
+              resolve();
+            });
+  
+            audio!.addEventListener("error", () => {
+              reject(new Error("Audio failed to load"));
+            });
+  
+            // Fallback timeout if metadata doesn't load
+            setTimeout(() => reject(new Error("Timeout loading audio metadata")), 3000);
+          });
+  
+          // Try playing the audio
+          await audio.play().catch((err) => {
+            console.warn("❌ Autoplay blocked or audio play failed:", err);
+          });
+  
+        } catch (err) {
+          console.error("🎙️ Error handling audio:", err);
+        }
       }
   
-      // Determine typing speed based on audio duration
-      const duration = audioDuration || fullText.length * 50; // fallback
+      // Fallback duration if audio not loaded
+      const duration = audioDuration || fullText.length * 50;
       const interval = duration / fullText.length;
   
       let index = 0;
@@ -98,7 +131,6 @@ const App: React.FC<InterviewProps> = () => {
         if (index < fullText.length) {
           requestAnimationFrame(typeChar);
         } else {
-          // Typing complete
           setMessages((prev) => [
             ...prev,
             {
@@ -113,11 +145,13 @@ const App: React.FC<InterviewProps> = () => {
       };
   
       requestAnimationFrame(typeChar);
+  
     } catch (error) {
-      console.error("Error talking to backend:", error);
+      console.error("🚨 Error communicating with backend:", error);
       setIsTyping(false);
     }
   }
+  
   
   
   
@@ -146,13 +180,16 @@ const App: React.FC<InterviewProps> = () => {
 
       <Header />
 
-      <button
+      {/* <button
         className="absolute top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg z-[50]"
         onClick={logout}
       >
         Logout
-      </button>
-
+      </button> */}
+      <div className="absolute top-4 right-4 px-4 py-2 rounded-lg z-[50]">
+        <ConnectButton />
+      </div>
+      
       <div className="flex-1 flex">
         <div className="w-full h-full relative">
 
