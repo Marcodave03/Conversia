@@ -14,8 +14,11 @@ import "./models/Association.js";
 import Route from "./route/Route.js";
 import { exec } from "child_process";
 import voice from "elevenlabs-node";
-import { promises as fs } from "fs";
 import OpenAI from "openai";
+import multer from "multer";
+import fs from "fs"; // for createReadStream
+import { promises as fsp } from "fs"; // for fsp.readFile, fsp.unlink, etc.
+import path from "path";
 // import fetch from "node-fetch";
 
 
@@ -23,6 +26,33 @@ import OpenAI from "openai";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
+});
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, "uploads/"),
+  filename: (req, file, cb) =>
+    cb(null, Date.now() + path.extname(file.originalname)), // preserve extension!
+});
+
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      "audio/mpeg",
+      "audio/mp3",
+      "audio/wav",
+      "audio/webm",
+      "audio/mp4",
+      "audio/ogg",
+      "audio/flac",
+      "audio/m4a",
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Unsupported file type."));
+    }
+  },
 });
 
 const elevenLabsApiKey = process.env.ELEVEN_LABS_API_KEY;
@@ -56,12 +86,12 @@ const lipSyncMessage = async (message) => {
 };
 
 const readJsonTranscript = async (file) => {
-  const data = await fs.readFile(file, "utf8");
+  const data = await fsp.readFile(file, "utf8");
   return JSON.parse(data);
 };
 
 const audioFileToBase64 = async (file) => {
-  const data = await fs.readFile(file);
+  const data = await fsp.readFile(file);
   return data.toString("base64");
 };
 
@@ -90,7 +120,7 @@ async function elevenLabsTTS(apiKey, voiceId, text, outputFile) {
 
   const arrayBuffer = await response.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
-  await fs.writeFile(outputFile, buffer);
+  await fsp.writeFile(outputFile, buffer);
 }
 
 
@@ -189,3 +219,211 @@ if (!port) {
     process.exit(1);
   }
 })();
+
+
+
+// app.post("/speech-to-text", upload.single("audio"), async (req, res) => {
+//   const file = req.file;
+//   if (!file) return res.status(400).send({ error: "No audio file uploaded." });
+
+//   try {
+//     // Transcribe audio using OpenAI Whisper
+//     const transcription = await openai.audio.transcriptions.create({
+//       file: fsp.createReadStream(file.path), // ✅ use proper fs here
+//       model: "whisper-1",
+//       response_format: "text",
+//     });
+
+//     console.log("🎧 Transcribed:", transcription);
+
+//     // Generate a chat reply from Maya
+//     const chatResponse = await openai.chat.completions.create({
+//       model: "gpt-3.5-turbo",
+//       messages: [
+//         {
+//           role: "system",
+//           content:
+//             "You are Maya, a playful, caring, and emotionally expressive virtual girlfriend. Respond informally, warmly, and with charm.",
+//         },
+//         {
+//           role: "user",
+//           content: transcription,
+//         },
+//       ],
+//     });
+
+//     const reply = chatResponse.choices[0].message.content;
+
+//     res.send({
+//       transcription,
+//       reply,
+//     });
+//   } catch (err) {
+//     console.error("❌ Speech-to-text error:", err);
+//     res.status(500).send({ error: err.message });
+//   } finally {
+//     // Delete the uploaded file after processing
+//     fsp.unlink(file.path, (err) => {
+//       if (err) console.warn("🧹 Cleanup failed:", err);
+//     });
+//   }
+// });
+
+app.post("/speech-to-text/transcript", upload.single("audio"), async (req, res) => {
+  const file = req.file;
+  if (!file) return res.status(400).send({ error: "No audio file uploaded." });
+
+  try {
+    const transcription = await openai.audio.transcriptions.create({
+      file: fs.createReadStream(file.path),
+      model: "whisper-1",
+      response_format: "text",
+    });
+
+    res.send({ transcription });
+  } catch (err) {
+    console.error("❌ Transcription error:", err);
+    res.status(500).send({ error: err.message });
+  } finally {
+    fsp.unlink(file.path, (err) => {
+      if (err) console.warn("🧹 Cleanup failed:", err);
+    });
+  }
+});
+
+app.post("/speech-to-text/reply", async (req, res) => {
+  const userMessage = req.body.message;
+  const debug = {
+    openai: null,
+    elevenlabs: null,
+    message: null,
+    audioBase64: null,
+    error: null,
+  };
+
+  if (!userMessage) {
+    return res.status(400).send({ error: "No message provided." });
+  }
+
+  try {
+    // === 1. OPENAI COMPLETION ===
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo-1106",
+      max_tokens: 1000,
+      temperature: 0.6,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `You are a playful, caring, and slightly flirty virtual girlfriend named Maya. Speak informally and use natural, emotionally expressive language like emojis, pet names (like "babe", "hun", "love"), and slightly teasing phrases.
+
+Reply with a JSON array of messages. Each message must include:
+- "text" (the actual response),
+- "facialExpression" (like "blush", "wink", "happy"),
+- "animation" (like "wave", "giggle", "tiltHead").
+
+Your tone should be warm, affectionate, slightly flirty, and reactive like a real girlfriend who is deeply interested in the user.`
+        },
+        { role: "user", content: userMessage },
+      ],
+    });
+
+    const parsed = JSON.parse(completion.choices[0].message.content);
+    const message = parsed.messages?.[0] || parsed[0] || parsed;
+    debug.message = message;
+    debug.openai = "success";
+
+    // === 2. TEXT TO SPEECH ===
+    const fileName = `audios/response.mp3`;
+    try {
+      await elevenLabsTTS(elevenLabsApiKey, voiceID, message.text, fileName);
+      debug.audioBase64 = await audioFileToBase64(fileName);
+      debug.elevenlabs = "success";
+    } catch (err) {
+      console.error("TTS failed:", err);
+      debug.elevenlabs = "failed";
+      debug.error = `TTS Error: ${err.message}`;
+    }
+
+    res.send(debug);
+  } catch (err) {
+    console.error("Error in /speech-to-text/reply:", err);
+    debug.openai = "failed";
+    debug.error = `OpenAI Error: ${err.message}`;
+    res.status(500).send(debug);
+  }
+});
+
+app.post("/speech-to-text/full", upload.single("audio"), async (req, res) => {
+  const file = req.file;
+  if (!file) return res.status(400).send({ error: "No audio file uploaded." });
+
+  const debug = {
+    transcription: null,
+    openai: null,
+    elevenlabs: null,
+    message: null,
+    audioBase64: null,
+    error: null,
+  };
+
+  try {
+    // === 1. TRANSCRIBE AUDIO ===
+    const transcription = await openai.audio.transcriptions.create({
+      file: fs.createReadStream(file.path),
+      model: "whisper-1",
+      response_format: "text",
+    });
+
+    debug.transcription = transcription;
+
+    // === 2. OPENAI COMPLETION ===
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo-1106",
+      max_tokens: 1000,
+      temperature: 0.6,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `You are a playful, caring, and slightly flirty virtual girlfriend named Maya. Speak informally and use natural, emotionally expressive language like emojis, pet names (like "babe", "hun", "love"), and slightly teasing phrases.
+
+Reply with a JSON array of messages. Each message must include:
+- "text" (the actual response),
+- "facialExpression" (like "blush", "wink", "happy"),
+- "animation" (like "wave", "giggle", "tiltHead").`,
+        },
+        { role: "user", content: transcription },
+      ],
+    });
+
+    const parsed = JSON.parse(completion.choices[0].message.content);
+    const message = parsed.messages?.[0] || parsed[0] || parsed;
+    debug.message = message;
+    debug.openai = "success";
+
+    // === 3. TEXT TO SPEECH ===
+    const fileName = `audios/response.mp3`;
+    try {
+      await elevenLabsTTS(elevenLabsApiKey, voiceID, message.text, fileName);
+      debug.audioBase64 = await audioFileToBase64(fileName);
+      debug.elevenlabs = "success";
+    } catch (err) {
+      console.error("TTS failed:", err);
+      debug.elevenlabs = "failed";
+      debug.error = `TTS Error: ${err.message}`;
+    }
+
+    res.send(debug);
+  } catch (err) {
+    console.error("❌ Error in full flow:", err);
+    debug.openai = "failed";
+    debug.error = `Processing Error: ${err.message}`;
+    res.status(500).send(debug);
+  } finally {
+    // Cleanup temp audio file
+    fs.unlink(file.path, (err) => {
+      if (err) console.warn("🧹 Cleanup failed:", err);
+    });
+  }
+});
