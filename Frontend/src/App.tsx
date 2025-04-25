@@ -21,7 +21,6 @@ type InterviewProps = {
 };
 
 const App: React.FC<InterviewProps> = () => {
-  const wallet = useWallet();
   const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
