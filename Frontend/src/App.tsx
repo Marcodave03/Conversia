@@ -27,6 +27,8 @@ const App: React.FC<InterviewProps> = () => {
   const [userInput, setUserInput] = useState("");
   const [typingText, setTypingText] = useState("");
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
 
   // Redirect unauthorized users
   if (!isAuthenticated) {
@@ -71,31 +73,30 @@ const App: React.FC<InterviewProps> = () => {
       setIsTyping(true);
   
       // Initialize audio
-      // let audio: HTMLAudioElement | null = null;
+      let audio: HTMLAudioElement | null = null;
       let audioDuration = 0;
   
       if (isSpeechEnabled && audioUrl) {
-        const audioElement = new Audio(audioUrl);
-        audioElement.onerror = (e) => console.error("Failed to load/play audio:", e);
+        try {
+          // Bypass browser cache by appending a timestamp
+          const freshAudioUrl = `${audioUrl}?t=${new Date().getTime()}`;
+          const audioResponse = await fetch(freshAudioUrl);
+          const audioBlob = await audioResponse.blob();
+          const audioObjectUrl = URL.createObjectURL(audioBlob);
       
-        // Wait until the audio is ready to play
-        audioElement.oncanplaythrough = () => {
-          const playPromise = audioElement!.play();
+          audio = new Audio(audioObjectUrl);
+
+          // add audio event listeners
+          audio.onplay = () => setIsSpeaking(true);
+          audio.onended = () => setIsSpeaking(false);
+
+          await audio.play();
       
-          if (playPromise !== undefined) {
-            playPromise
-              .then(() => {
-                console.log("Audio playback started");
-              })
-              .catch((err) => {
-                console.warn("Audio autoplay blocked:", err);
-              });
-          }
-      
-          // Duration is only accurate after canplaythrough
-          audioDuration = audioElement.duration * 1000 || 2000;
-        };
-      }
+          audioDuration = audio.duration * 1000 || 2000; // Use duration to calculate typing delay
+        } catch (err) {
+          console.error("Error fetching or playing audio:", err);
+        }
+      }      
   
       // Determine typing speed based on audio duration
       const duration = audioDuration || fullText.length * 50; // fallback
@@ -244,16 +245,13 @@ const App: React.FC<InterviewProps> = () => {
         {/* Speech section */}
         <div className="flex gap-4 items-center">
         <span
-          className={`text-white text-4xl cursor-pointer ${isSpeechEnabled ? 'opacity-100' : 'opacity-50'}`}
-          onClick={toggleSpeech}
-          style={{
-            transform: 'scale(1.5)',
-            marginRight: '55px',     
-            marginTop: '2px',         
-          }}
-        >
-          🎙️
-        </span>
+            className={`text-white text-4xl cursor-pointer transition-opacity duration-300 ${
+              isSpeechEnabled ? 'opacity-100' : 'opacity-50'
+            } ${isSpeaking ? 'animate-pulse' : ''}`}
+            onClick={toggleSpeech}
+          >
+            🎙️
+          </span>
         </div>
       </div>
     </div>
