@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@mysten/sui": "^1.28.2",
+    "@suiet/wallet-kit": "^0.3.4"
+  }
+}
