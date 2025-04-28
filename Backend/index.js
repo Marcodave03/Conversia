@@ -324,6 +324,7 @@ Your tone should be warm, affectionate, slightly flirty, and reactive like a rea
         },
         { role: "user", content: userMessage },
       ],
+      response_format: "json",
     });
 
     const parsed = JSON.parse(completion.choices[0].message.content);
