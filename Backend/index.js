@@ -3,7 +3,7 @@ dotenv.config();
 
 console.log("ENV CHECK:", {
   OPENAI: process.env.OPENAI_API_KEY,
-  ELEVEN: process.env.ELEVEN_LABS_API_KEY
+  ELEVEN: process.env.ELEVEN_LABS_API_KEY,
 });
 
 import express from "express";
@@ -21,11 +21,8 @@ import { promises as fsp } from "fs"; // for fsp.readFile, fsp.unlink, etc.
 import path from "path";
 // import fetch from "node-fetch";
 
-
-
-
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 const storage = multer.diskStorage({
@@ -66,8 +63,7 @@ const port = process.env.PORT;
 const server = http.createServer(app);
 
 app.use("/api/conversia", Route);
-app.use('/audios', express.static('audios'));
-
+app.use("/audios", express.static("audios"));
 
 // Helper Functions
 const execCommand = (command) => {
@@ -81,8 +77,12 @@ const execCommand = (command) => {
 
 const lipSyncMessage = async (message) => {
   const time = new Date().getTime();
-  await execCommand(`ffmpeg -y -i audios/message_${message}.mp3 audios/message_${message}.wav`);
-  await execCommand(`./bin/rhubarb -f json -o audios/message_${message}.json audios/message_${message}.wav -r phonetic`);
+  await execCommand(
+    `ffmpeg -y -i audios/message_${message}.mp3 audios/message_${message}.wav`
+  );
+  await execCommand(
+    `./bin/rhubarb -f json -o audios/message_${message}.json audios/message_${message}.wav -r phonetic`
+  );
 };
 
 const readJsonTranscript = async (file) => {
@@ -97,32 +97,36 @@ const audioFileToBase64 = async (file) => {
 
 // ElevenLabs: Get available voices
 async function elevenLabsTTS(apiKey, voiceId, text, outputFile) {
-  const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-    method: "POST",
-    headers: {
-      "xi-api-key": apiKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      text: text,
-      model_id: "eleven_monolingual_v1",
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.5
-      }
-    }),
-  });
+  const response = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+    {
+      method: "POST",
+      headers: {
+        "xi-api-key": apiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text: text,
+        model_id: "eleven_monolingual_v1",
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.5,
+        },
+      }),
+    }
+  );
 
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(`Failed TTS: ${response.status} ${response.statusText} - ${errorBody}`);
+    throw new Error(
+      `Failed TTS: ${response.status} ${response.statusText} - ${errorBody}`
+    );
   }
 
   const arrayBuffer = await response.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
   await fsp.writeFile(outputFile, buffer);
 }
-
 
 app.get("/voices", async (req, res) => {
   try {
@@ -202,7 +206,6 @@ Your tone should be warm, affectionate, slightly flirty, and reactive like a rea
   }
 });
 
-
 if (!port) {
   console.error("Port is not defined in the environment variables");
   process.exit(1);
@@ -219,8 +222,6 @@ if (!port) {
     process.exit(1);
   }
 })();
-
-
 
 // app.post("/speech-to-text", upload.single("audio"), async (req, res) => {
 //   const file = req.file;
@@ -269,27 +270,33 @@ if (!port) {
 //   }
 // });
 
-app.post("/speech-to-text/transcript", upload.single("audio"), async (req, res) => {
-  const file = req.file;
-  if (!file) return res.status(400).send({ error: "No audio file uploaded." });
+app.post(
+  "/speech-to-text/transcript",
+  upload.single("audio"),
+  async (req, res) => {
+    const file = req.file;
+    if (!file)
+      return res.status(400).send({ error: "No audio file uploaded." });
 
-  try {
-    const transcription = await openai.audio.transcriptions.create({
-      file: fs.createReadStream(file.path),
-      model: "whisper-1",
-      response_format: "text",
-    });
+    try {
+      const transcription = await openai.audio.transcriptions.create({
+        file: fs.createReadStream(file.path),
+        model: "whisper-1",
+        response_format: "json",
+        language: "en",
+      });
 
-    res.send({ transcription });
-  } catch (err) {
-    console.error("❌ Transcription error:", err);
-    res.status(500).send({ error: err.message });
-  } finally {
-    fsp.unlink(file.path, (err) => {
-      if (err) console.warn("🧹 Cleanup failed:", err);
-    });
+      res.send({ transcription });
+    } catch (err) {
+      console.error("❌ Transcription error:", err);
+      res.status(500).send({ error: err.message });
+    } finally {
+      fsp.unlink(file.path, (err) => {
+        if (err) console.warn("🧹 Cleanup failed:", err);
+      });
+    }
   }
-});
+);
 
 app.post("/speech-to-text/reply", async (req, res) => {
   const userMessage = req.body.message;
@@ -322,7 +329,7 @@ Reply with a JSON array of messages. Each message must include:
 - "facialExpression" (like "blush", "wink", "happy"),
 - "animation" (like "wave", "giggle", "tiltHead").
 
-Your tone should be warm, affectionate, slightly flirty, and reactive like a real girlfriend who is deeply interested in the user.`
+Your tone should be warm, affectionate, slightly flirty, and reactive like a real girlfriend who is deeply interested in the user.`,
         },
         { role: "user", content: userMessage },
       ],
