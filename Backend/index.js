@@ -5,8 +5,8 @@ import express from "express";
 import cors from "cors";
 import http from "http";
 import { exec } from "child_process";
-import { promises as fs } from "fs";
-import fs from "fs";
+import fs from 'fs';
+import { promises as fsp } from 'fs';
 import sequelize from "./config/Database.js";
 import "./models/Association.js";
 import Route from "./route/Route.js";
@@ -14,6 +14,8 @@ import voice from "elevenlabs-node";
 import OpenAI from "openai";
 import path from "path";
 import multer from "multer";
+import fetch from "node-fetch";
+
 
 // Validate ENV setup
 console.log("ENV CHECK:", {
@@ -129,23 +131,27 @@ async function elevenLabsTTS(apiKey, voiceId, text, outputFile) {
   }
 
   const buffer = Buffer.from(await response.arrayBuffer());
-  await fs.writeFile(outputFile, buffer);
+  await fsp.writeFile(outputFile, buffer);
 };
 
 const generateLipSyncData = async (inputMp3File, wavFile, jsonFile) => {
   const rhubarbPath = path.resolve("bin", "rhubarb", "rhubarb");
-  await execCommand(`ffmpeg -y -i ${inputMp3File} ${wavFile}`);
-  await execCommand(`${rhubarbPath} -f json -o ${jsonFile} ${wavFile} -r phonetic`);
+
+  // Normal quote untuk ffmpeg
+  await execCommand(`ffmpeg -y -i "${inputMp3File}" "${wavFile}"`);
+
+  // DOUBLE QUOTE RHUBARB (safe untuk Windows spasi)
+  await execCommand(`cmd.exe /c ""${rhubarbPath}" -f json -o "${jsonFile}" "${wavFile}" -r phonetic"`);
 };
 
 
 const readJsonFile = async (filePath) => {
-  const content = await fs.readFile(filePath, "utf8");
+  const content = await fsp.readFile(filePath, "utf8");
   return JSON.parse(content);
 };
 
 const encodeFileToBase64 = async (filePath) => {
-  const fileBuffer = await fs.readFile(filePath);
+  const fileBuffer = await fsp.readFile(filePath);
   return fileBuffer.toString("base64");
 };
 
@@ -189,8 +195,13 @@ Your tone should be warm, affectionate, slightly flirty, and reactive like a rea
       ],
     });
 
-    const aiResponse = JSON.parse(completion.choices[0].message.content);
-    debug.message = aiResponse;
+    const parsed = JSON.parse(completion.choices[0].message.content);
+    const message = parsed.messages?.[0] || parsed[0] || parsed;
+
+    if (!message.text) {
+      throw new Error("OpenAI result missing text field!");
+    }
+    debug.message = message;
     debug.openai = "success";
 
     const filePathMp3 = `audios/response.mp3`;
@@ -198,7 +209,7 @@ Your tone should be warm, affectionate, slightly flirty, and reactive like a rea
     const filePathJson = `audios/response.json`;
 
     // 2. ElevenLabs TTS
-    await elevenLabsTTS(elevenLabsApiKey, voiceID, aiResponse.text, filePathMp3);
+    await elevenLabsTTS(elevenLabsApiKey, voiceID, message.text, filePathMp3);
 
     // 3. WAV Conversion and LipSync Generation
     await generateLipSyncData(filePathMp3, filePathWav, filePathJson);
@@ -216,9 +227,9 @@ Your tone should be warm, affectionate, slightly flirty, and reactive like a rea
     // Respond
     res.json({
       message: {
-        text: aiResponse.text,
-        facialExpression: aiResponse.facialExpression || "default",
-        animation: aiResponse.animation || "Idle",
+        text: message.text,
+        facialExpression: message.facialExpression || "default",
+        animation: message.animation || "Idle",
         lipsync: lipSyncData,
         audio: audioBase64
       }
@@ -249,53 +260,6 @@ if (!port) {
     process.exit(1);
   }
 })();
-
-// app.post("/speech-to-text", upload.single("audio"), async (req, res) => {
-//   const file = req.file;
-//   if (!file) return res.status(400).send({ error: "No audio file uploaded." });
-
-//   try {
-//     // Transcribe audio using OpenAI Whisper
-//     const transcription = await openai.audio.transcriptions.create({
-//       file: fsp.createReadStream(file.path), // ✅ use proper fs here
-//       model: "whisper-1",
-//       response_format: "text",
-//     });
-
-//     console.log("🎧 Transcribed:", transcription);
-
-//     // Generate a chat reply from Maya
-//     const chatResponse = await openai.chat.completions.create({
-//       model: "gpt-3.5-turbo",
-//       messages: [
-//         {
-//           role: "system",
-//           content:
-//             "You are Maya, a playful, caring, and emotionally expressive virtual girlfriend. Respond informally, warmly, and with charm.",
-//         },
-//         {
-//           role: "user",
-//           content: transcription,
-//         },
-//       ],
-//     });
-
-//     const reply = chatResponse.choices[0].message.content;
-
-//     res.send({
-//       transcription,
-//       reply,
-//     });
-//   } catch (err) {
-//     console.error("❌ Speech-to-text error:", err);
-//     res.status(500).send({ error: err.message });
-//   } finally {
-//     // Delete the uploaded file after processing
-//     fsp.unlink(file.path, (err) => {
-//       if (err) console.warn("🧹 Cleanup failed:", err);
-//     });
-//   }
-// });
 
 app.post(
   "/speech-to-text/transcript",
