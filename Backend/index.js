@@ -1,25 +1,26 @@
 import dotenv from "dotenv";
 dotenv.config();
 
+import express from "express";
+import cors from "cors";
+import http from "http";
+import { exec } from "child_process";
+import { promises as fs } from "fs";
+import fs from "fs";
+import sequelize from "./config/Database.js";
+import "./models/Association.js";
+import Route from "./route/Route.js";
+import voice from "elevenlabs-node";
+import OpenAI from "openai";
+import path from "path";
+import multer from "multer";
+
+// Validate ENV setup
 console.log("ENV CHECK:", {
   OPENAI: process.env.OPENAI_API_KEY,
   ELEVEN: process.env.ELEVEN_LABS_API_KEY,
 });
 
-import express from "express";
-import cors from "cors";
-import http from "http";
-import sequelize from "./config/Database.js";
-import "./models/Association.js";
-import Route from "./route/Route.js";
-import { exec } from "child_process";
-import voice from "elevenlabs-node";
-import OpenAI from "openai";
-import multer from "multer";
-import fs from "fs"; // for createReadStream
-import { promises as fsp } from "fs"; // for fsp.readFile, fsp.unlink, etc.
-import path from "path";
-// import fetch from "node-fetch";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -55,25 +56,29 @@ const upload = multer({
 const elevenLabsApiKey = process.env.ELEVEN_LABS_API_KEY;
 const voiceID = "21m00Tcm4TlvDq8ikWAM";
 
+// Initialize server
 const app = express();
 app.use(express.json());
 app.use(cors());
 const port = process.env.PORT;
-
 const server = http.createServer(app);
 
-app.use("/api/conversia", Route);
+// Static files
 app.use("/audios", express.static("audios"));
+app.use("/api/conversia", Route);
 
-// Helper Functions
-const execCommand = (command) => {
-  return new Promise((resolve, reject) => {
-    exec(command, (error, stdout, stderr) => {
-      if (error) reject(error);
-      resolve(stdout);
-    });
+// ---------- Helper Utilities ----------
+
+const execCommand = (command) => new Promise((resolve, reject) => {
+  exec(command, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Execution error: ${command}`, error);
+      return reject(error);
+    }
+    if (stderr) console.warn(`Execution stderr: ${stderr}`);
+    resolve(stdout);
   });
-};
+});
 
 const lipSyncMessage = async (message) => {
   const time = new Date().getTime();
@@ -123,47 +128,51 @@ async function elevenLabsTTS(apiKey, voiceId, text, outputFile) {
     );
   }
 
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  await fsp.writeFile(outputFile, buffer);
-}
+  const buffer = Buffer.from(await response.arrayBuffer());
+  await fs.writeFile(outputFile, buffer);
+};
+
+const generateLipSyncData = async (inputMp3File, wavFile, jsonFile) => {
+  const rhubarbPath = path.resolve("bin", "rhubarb", "rhubarb");
+  await execCommand(`ffmpeg -y -i ${inputMp3File} ${wavFile}`);
+  await execCommand(`${rhubarbPath} -f json -o ${jsonFile} ${wavFile} -r phonetic`);
+};
+
+
+const readJsonFile = async (filePath) => {
+  const content = await fs.readFile(filePath, "utf8");
+  return JSON.parse(content);
+};
+
+const encodeFileToBase64 = async (filePath) => {
+  const fileBuffer = await fs.readFile(filePath);
+  return fileBuffer.toString("base64");
+};
 
 app.get("/voices", async (req, res) => {
   try {
     const voices = await voice.getVoices(elevenLabsApiKey);
-    res.send(voices);
+    res.json(voices);
   } catch (err) {
-    console.error("Failed to fetch voices:", err.message);
-    res.status(500).send({ error: "Failed to fetch voices" });
+    console.error("Failed fetching voices:", err);
+    res.status(500).json({ error: "Failed to fetch voices" });
   }
 });
 
-// Chat + Voice Route
+// Chat, TTS, Lipsync pipeline
 app.post("/chat", async (req, res) => {
-  const userMessage = req.body.message;
-  const debug = {
-    openai: null,
-    elevenlabs: null,
-    message: null,
-    audioBase64: null,
-    error: null,
-  };
+  const { message: userMessage } = req.body;
+  const debug = { openai: null, elevenlabs: null, message: null, audioBase64: null, lipsync: null, error: null };
 
-  if (!userMessage) {
-    return res.status(400).send({ error: "No message provided." });
-  }
-
-  if (!elevenLabsApiKey || !process.env.OPENAI_API_KEY) {
-    return res.status(500).send({ error: "Missing API keys." });
-  }
+  if (!userMessage) return res.status(400).send({ error: "No message provided." });
+  if (!elevenLabsApiKey || !process.env.OPENAI_API_KEY) return res.status(500).send({ error: "Missing API keys." });
 
   try {
-    // === 1. CHATGPT COMPLETION ===
+    // 1. OpenAI Chat Completion
     const completion = await openai.chat.completions.create({
       model: "gpt-3.5-turbo-1106",
-      max_tokens: 1000,
       temperature: 0.6,
-      response_format: { type: "json_object" },
+      max_tokens: 1000,
       messages: [
         {
           role: "system",
@@ -180,34 +189,52 @@ Your tone should be warm, affectionate, slightly flirty, and reactive like a rea
       ],
     });
 
-    const parsed = JSON.parse(completion.choices[0].message.content);
-    let message = parsed.messages?.[0] || parsed[0] || parsed;
-    debug.message = message;
+    const aiResponse = JSON.parse(completion.choices[0].message.content);
+    debug.message = aiResponse;
     debug.openai = "success";
 
-    // === 2. TEXT TO SPEECH ===
-    const fileName = `audios/response.mp3`;
-    try {
-      await elevenLabsTTS(elevenLabsApiKey, voiceID, message.text, fileName);
-      debug.audioBase64 = await audioFileToBase64(fileName);
-      debug.elevenlabs = "success";
-    } catch (err) {
-      console.error("TTS failed:", err);
-      debug.elevenlabs = "failed";
-      debug.error = `TTS Error: ${err.message}`;
-    }
+    const filePathMp3 = `audios/response.mp3`;
+    const filePathWav = `audios/response.wav`;
+    const filePathJson = `audios/response.json`;
 
-    res.send(debug);
+    // 2. ElevenLabs TTS
+    await elevenLabsTTS(elevenLabsApiKey, voiceID, aiResponse.text, filePathMp3);
+
+    // 3. WAV Conversion and LipSync Generation
+    await generateLipSyncData(filePathMp3, filePathWav, filePathJson);
+
+    // 4. Read Generated LipSync JSON
+    const lipSyncData = await readJsonFile(filePathJson);
+
+    // 5. Encode Audio for Frontend
+    const audioBase64 = await encodeFileToBase64(filePathMp3);
+
+    debug.elevenlabs = "success";
+    debug.audioBase64 = audioBase64;
+    debug.lipsync = lipSyncData;
+
+    // Respond
+    res.json({
+      message: {
+        text: aiResponse.text,
+        facialExpression: aiResponse.facialExpression || "default",
+        animation: aiResponse.animation || "Idle",
+        lipsync: lipSyncData,
+        audio: audioBase64
+      }
+    });
+
   } catch (err) {
-    console.error("Error in /chat:", err);
-    debug.openai = "failed";
-    debug.error = `OpenAI Error: ${err.message}`;
+    console.error("Chat pipeline failure:", err);
+    debug.error = err.message;
     res.status(500).send(debug);
   }
 });
 
+// ---------- Server Bootstrap ----------
+
 if (!port) {
-  console.error("Port is not defined in the environment variables");
+  console.error("Critical Error: PORT not defined in environment variables.");
   process.exit(1);
 }
 
@@ -215,10 +242,10 @@ if (!port) {
   try {
     await sequelize.sync({ alter: false });
     server.listen(port, () => {
-      console.log(`Server is running on port ${port}`);
+      console.log(`✅ Server operational at http://localhost:${port}`);
     });
-  } catch (error) {
-    console.error("Error starting server or syncing database:", error);
+  } catch (err) {
+    console.error("Failed starting server or syncing database:", err);
     process.exit(1);
   }
 })();
