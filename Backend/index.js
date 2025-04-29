@@ -5,8 +5,8 @@ import express from "express";
 import cors from "cors";
 import http from "http";
 import { exec } from "child_process";
-import fs from 'fs';
-import { promises as fsp } from 'fs';
+import fs from "fs";
+import { promises as fsp } from "fs";
 import sequelize from "./config/Database.js";
 import "./models/Association.js";
 import Route from "./route/Route.js";
@@ -16,13 +16,20 @@ import path from "path";
 import multer from "multer";
 import fetch from "node-fetch";
 
+function cleanJsonResponse(str) {
+  return str
+    .trim()
+    .replace(/^```(?:json)?/, "") // remove leading ``` or ```json
+    .replace(/```$/, "") // remove ending ```
+    .replace(/^`/, "") // remove single backtick `
+    .replace(/`$/, ""); // remove ending single backtick `
+}
 
 // Validate ENV setup
 console.log("ENV CHECK:", {
   OPENAI: process.env.OPENAI_API_KEY,
   ELEVEN: process.env.ELEVEN_LABS_API_KEY,
 });
-
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -71,16 +78,17 @@ app.use("/api/conversia", Route);
 
 // ---------- Helper Utilities ----------
 
-const execCommand = (command) => new Promise((resolve, reject) => {
-  exec(command, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Execution error: ${command}`, error);
-      return reject(error);
-    }
-    if (stderr) console.warn(`Execution stderr: ${stderr}`);
-    resolve(stdout);
+const execCommand = (command) =>
+  new Promise((resolve, reject) => {
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Execution error: ${command}`, error);
+        return reject(error);
+      }
+      if (stderr) console.warn(`Execution stderr: ${stderr}`);
+      resolve(stdout);
+    });
   });
-});
 
 const lipSyncMessage = async (message) => {
   const time = new Date().getTime();
@@ -132,7 +140,7 @@ async function elevenLabsTTS(apiKey, voiceId, text, outputFile) {
 
   const buffer = Buffer.from(await response.arrayBuffer());
   await fsp.writeFile(outputFile, buffer);
-};
+}
 
 const generateLipSyncData = async (inputMp3File, wavFile, jsonFile) => {
   const rhubarbPath = path.resolve("bin", "rhubarb", "rhubarb");
@@ -141,9 +149,10 @@ const generateLipSyncData = async (inputMp3File, wavFile, jsonFile) => {
   await execCommand(`ffmpeg -y -i "${inputMp3File}" "${wavFile}"`);
 
   // DOUBLE QUOTE RHUBARB (safe untuk Windows spasi)
-  await execCommand(`cmd.exe /c ""${rhubarbPath}" -f json -o "${jsonFile}" "${wavFile}" -r phonetic"`);
+  await execCommand(
+    `cmd.exe /c ""${rhubarbPath}" -f json -o "${jsonFile}" "${wavFile}" -r phonetic"`
+  );
 };
-
 
 const readJsonFile = async (filePath) => {
   const content = await fsp.readFile(filePath, "utf8");
@@ -167,11 +176,20 @@ app.get("/voices", async (req, res) => {
 
 // Chat, TTS, Lipsync pipeline
 app.post("/chat", async (req, res) => {
-  const { message: userMessage } = req.body;
-  const debug = { openai: null, elevenlabs: null, message: null, audioBase64: null, lipsync: null, error: null };
+  const { message: userMessage, speechEnabled } = req.body;
+  const debug = {
+    openai: null,
+    elevenlabs: null,
+    message: null,
+    audioBase64: null,
+    lipsync: null,
+    error: null,
+  };
 
-  if (!userMessage) return res.status(400).send({ error: "No message provided." });
-  if (!elevenLabsApiKey || !process.env.OPENAI_API_KEY) return res.status(500).send({ error: "Missing API keys." });
+  if (!userMessage)
+    return res.status(400).send({ error: "No message provided." });
+  if (!process.env.OPENAI_API_KEY)
+    return res.status(500).send({ error: "Missing OpenAI key." });
 
   try {
     // 1. OpenAI Chat Completion
@@ -187,54 +205,66 @@ app.post("/chat", async (req, res) => {
 Reply with a JSON array of messages. Each message must include:
 - "text" (the actual response),
 - "facialExpression" (like "blush", "wink", "happy"),
-- "animation" (like "wave", "giggle", "tiltHead").
-
-Your tone should be warm, affectionate, slightly flirty, and reactive like a real girlfriend who is deeply interested in the user.`,
+- "animation" (like "wave", "giggle", "tiltHead").`,
         },
         { role: "user", content: userMessage },
       ],
     });
 
-    const parsed = JSON.parse(completion.choices[0].message.content);
+    const cleaned = cleanJsonResponse(completion.choices[0].message.content);
+    const parsed = JSON.parse(cleaned);
+
     const message = parsed.messages?.[0] || parsed[0] || parsed;
 
     if (!message.text) {
       throw new Error("OpenAI result missing text field!");
     }
+
     debug.message = message;
     debug.openai = "success";
 
-    const filePathMp3 = `audios/response.mp3`;
-    const filePathWav = `audios/response.wav`;
-    const filePathJson = `audios/response.json`;
+    // === Only generate TTS if requested ===
+    if (speechEnabled) {
+      console.log("🔊 ElevenLabs TTS is being called...");
+      const filePathMp3 = `audios/response.mp3`;
+      const filePathWav = `audios/response.wav`;
+      const filePathJson = `audios/response.json`;
 
-    // 2. ElevenLabs TTS
-    await elevenLabsTTS(elevenLabsApiKey, voiceID, message.text, filePathMp3);
+      if (speechEnabled) {
+        console.log("🔊 ElevenLabs TTS is being called...");
+        await elevenLabsTTS(
+          elevenLabsApiKey,
+          voiceID,
+          message.text,
+          filePathMp3
+        );
+        debug.elevenlabs = "success";
+        debug.audioBase64 = await encodeFileToBase64(filePathMp3);
+        debug.lipsync = await readJsonFile(filePathJson);
+      } else {
+        console.log("🔇 Skipped ElevenLabs TTS (speech disabled).");
+        debug.elevenlabs = "skipped";
+      }
 
-    // 3. WAV Conversion and LipSync Generation
-    await generateLipSyncData(filePathMp3, filePathWav, filePathJson);
+      await generateLipSyncData(filePathMp3, filePathWav, filePathJson);
+      const lipSyncData = await readJsonFile(filePathJson);
+      const audioBase64 = await encodeFileToBase64(filePathMp3);
 
-    // 4. Read Generated LipSync JSON
-    const lipSyncData = await readJsonFile(filePathJson);
+      debug.elevenlabs = "success";
+      debug.audioBase64 = audioBase64;
+      debug.lipsync = lipSyncData;
+    }
 
-    // 5. Encode Audio for Frontend
-    const audioBase64 = await encodeFileToBase64(filePathMp3);
-
-    debug.elevenlabs = "success";
-    debug.audioBase64 = audioBase64;
-    debug.lipsync = lipSyncData;
-
-    // Respond
+    // Response payload
     res.json({
       message: {
         text: message.text,
         facialExpression: message.facialExpression || "default",
         animation: message.animation || "Idle",
-        lipsync: lipSyncData,
-        audio: audioBase64
-      }
+        lipsync: debug.lipsync || null,
+        audio: debug.audioBase64 || null,
+      },
     });
-
   } catch (err) {
     console.error("Chat pipeline failure:", err);
     debug.error = err.message;

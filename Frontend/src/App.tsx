@@ -65,7 +65,10 @@ const App: React.FC<InterviewProps> = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ message: lastMessage.message }),
+        body: JSON.stringify({
+          message: lastMessage.message,
+          generateTTS: isSpeechEnabled,
+        }),
       });
 
       const data = await response.json();
