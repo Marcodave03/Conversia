@@ -106,6 +106,7 @@ interface AvatarProps {
   animation: string | null;
   mouthCues: MouthCue[];
   audioDuration: number;
+  modelUrl?: string; 
 }
 
 // GLTF Model Type
@@ -120,10 +121,11 @@ export function Avatar({
   animation,
   mouthCues,
   audioDuration,
+  modelUrl = "/models/girl1.glb",
 }: AvatarProps) {
   const group = useRef<THREE.Group>(null);
 
-  const { nodes, materials, scene } = useGLTF("/models/girl1.glb") as GLTFResult;
+  const { nodes, materials, scene } = useGLTF(modelUrl) as GLTFResult;
   const { animations } = useGLTF("/models/animations.glb") as GLTFResult & { animations: THREE.AnimationClip[] };
   const { actions } = useAnimations(animations, group);
 
@@ -331,4 +333,8 @@ export function Avatar({
 }
 
 useGLTF.preload("/models/girl1.glb");
+useGLTF.preload("/models/boy.glb");
+useGLTF.preload("/models/girl2.glb");
+useGLTF.preload("/models/girl3.glb");
+useGLTF.preload("/models/girl2benertapi.glb");
 useGLTF.preload("/models/animations.glb");
