@@ -4,9 +4,9 @@ import { Experience } from "./components/Experience";
 import Header from "./components/Header";
 import bgImage from "./assets/house-bg.jpg";
 import logo from "./assets/conversia-lg.png";
-import { useAuth } from '../src/hooks/useAuth';
+import { useAuth } from "../src/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-
+import { MouthCue } from "./components/Avatar";
 
 type Message = {
   message: string;
@@ -22,17 +22,25 @@ const App: React.FC<InterviewProps> = () => {
   const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
+  const [currentExpression, setCurrentExpression] = useState<string | null>(null);
+  const [currentAnimation, setCurrentAnimation] = useState<string | null>(null);
+  const [currentMouthCues, setCurrentMouthCues] = useState<MouthCue[]>([]);
+  const [audioDuration, setAudioDuration] = useState<number>(0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [userInput, setUserInput] = useState("");
   const [typingText, setTypingText] = useState("");
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
-
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
+    null
+  );
+  const [loadingTranscription, setLoadingTranscription] = useState(false);
 
   // Redirect unauthorized users
   if (!isAuthenticated) {
-    navigate('/landing');
+    navigate("/landing");
     return null;
   }
 
@@ -56,7 +64,7 @@ const App: React.FC<InterviewProps> = () => {
   async function processMessageToChatGPT(chatMessages: Message[]) {
     try {
       const lastMessage = chatMessages[chatMessages.length - 1];
-  
+
       const response = await fetch("http://localhost:5555/chat", {
         method: "POST",
         headers: {
@@ -64,18 +72,26 @@ const App: React.FC<InterviewProps> = () => {
         },
         body: JSON.stringify({ message: lastMessage.message }),
       });
-  
+
       const data = await response.json();
       const fullText = data.message?.text || "Maya belum bicara ya...";
+      const facialExpression = data.message?.facialExpression || null;
+      const animation = data.message?.animation || null;
+      const mouthCues = data.message?.lipsync?.mouthCues || [];
+      const soundDuration = data.message?.lipsync?.metadata?.duration || 2;
       const audioUrl = "http://localhost:5555/audios/response.mp3";
-  
+
       setTypingText(""); // Clear any previous typing
+      setCurrentExpression(facialExpression);
+      setCurrentAnimation(animation);
+      setCurrentMouthCues(mouthCues);
+      setAudioDuration(soundDuration * 1000)
       setIsTyping(true);
-  
+
       // Initialize audio
       let audio: HTMLAudioElement | null = null;
       let audioDuration = 0;
-  
+
       if (isSpeechEnabled && audioUrl) {
         try {
           // Bypass browser cache by appending a timestamp
@@ -83,7 +99,7 @@ const App: React.FC<InterviewProps> = () => {
           const audioResponse = await fetch(freshAudioUrl);
           const audioBlob = await audioResponse.blob();
           const audioObjectUrl = URL.createObjectURL(audioBlob);
-      
+
           audio = new Audio(audioObjectUrl);
 
           // add audio event listeners
@@ -91,27 +107,27 @@ const App: React.FC<InterviewProps> = () => {
           audio.onended = () => setIsSpeaking(false);
 
           await audio.play();
-      
+
           audioDuration = audio.duration * 1000 || 2000; // Use duration to calculate typing delay
         } catch (err) {
           console.error("Error fetching or playing audio:", err);
         }
-      }      
-  
+      }
+
       // Determine typing speed based on audio duration
       const duration = audioDuration || fullText.length * 50; // fallback
       const interval = duration / fullText.length;
-  
+
       let index = 0;
       let lastTime = performance.now();
-  
+
       const typeChar = (time: number) => {
         if (time - lastTime >= interval && index < fullText.length) {
           setTypingText((prev) => prev + fullText.charAt(index));
           index++;
           lastTime = time;
         }
-  
+
         if (index < fullText.length) {
           requestAnimationFrame(typeChar);
         } else {
@@ -128,19 +144,74 @@ const App: React.FC<InterviewProps> = () => {
           setIsTyping(false);
         }
       };
-  
+
       requestAnimationFrame(typeChar);
     } catch (error) {
       console.error("Error talking to backend:", error);
       setIsTyping(false);
     }
   }
-  
-  
-  
 
   const toggleSpeech = () => {
     setIsSpeechEnabled(!isSpeechEnabled);
+  };
+
+  const toggleRecording = async () => {
+    if (isRecording) {
+      mediaRecorder?.stop();
+      setIsRecording(false);
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        const recorder = new MediaRecorder(stream);
+        const audioChunks: Blob[] = [];
+
+        recorder.ondataavailable = (event) => {
+          audioChunks.push(event.data);
+        };
+
+        recorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+          const formData = new FormData();
+          formData.append("audio", audioBlob, "recording.webm");
+
+          try {
+            setLoadingTranscription(true); // === ADD THIS ===
+            const response = await fetch(
+              "http://localhost:5555/speech-to-text/full",
+              {
+                method: "POST",
+                body: formData,
+              }
+            );
+
+            const data = await response.json();
+            if (data?.message?.text) {
+              const newMessage: Message = {
+                message: data.transcription.trim(),
+                direction: "outgoing",
+                sender: "Aku",
+              };
+              setMessages((prev) => [...prev, newMessage]);
+              setIsTyping(true);
+              await processMessageToChatGPT([...messages, newMessage]);
+            }
+          } catch (err) {
+            console.error("Speech-to-Text failed:", err);
+          } finally {
+            setLoadingTranscription(false); // === ADD THIS ===
+          }
+        };
+
+        recorder.start();
+        setMediaRecorder(recorder);
+        setIsRecording(true);
+      } catch (err) {
+        console.error("Failed to start recording:", err);
+      }
+    }
   };
 
   return (
@@ -172,12 +243,12 @@ const App: React.FC<InterviewProps> = () => {
 
       <div className="flex-1 flex">
         <div className="w-full h-full relative">
-
           {/* Chat messages */}
-          <div className="h-[70vh] max-h-[70vh] overflow-y-auto space-y-4 p-4 absolute top-[10%] left-[55%] w-[43%] z-30"
-              style={{
-                position: 'relative'
-              }}
+          <div
+            className="h-[70vh] max-h-[70vh] overflow-y-auto space-y-4 p-4 absolute top-[10%] left-[55%] w-[43%] z-30"
+            style={{
+              position: "relative",
+            }}
           >
             <div className="fixed top-0 left-0 w-full h-32 bg-gradient-to-b from-[#000000]/30 to-transparent z-40 pointer-events-none"></div>
 
@@ -190,7 +261,9 @@ const App: React.FC<InterviewProps> = () => {
               >
                 <div
                   className={`max-w-[60%] p-3 rounded-xl text-lg ${
-                    msg.sender === "Maya" ? "bg-white" : "bg-blue-500 text-white"
+                    msg.sender === "Maya"
+                      ? "bg-white"
+                      : "bg-blue-500 text-white"
                   }`}
                 >
                   {msg.message}
@@ -205,6 +278,11 @@ const App: React.FC<InterviewProps> = () => {
                 </div>
               </div>
             )}
+            {loadingTranscription && (
+              <div className="flex justify-center py-4">
+                <div className="w-8 h-8 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
+              </div>
+            )}
           </div>
 
           {/* Avatar (with lower z-index) */}
@@ -215,12 +293,16 @@ const App: React.FC<InterviewProps> = () => {
               style={{ width: "100%", height: "100%" }}
               gl={{ alpha: true, preserveDrawingBuffer: true }}
             >
-              <Experience />
+              <Experience 
+                expression={currentExpression}
+                animation={currentAnimation}
+                mouthCues={currentMouthCues}
+                audioDuration={audioDuration}
+              />
             </Canvas>
           </div>
         </div>
       </div>
-
 
       {/* Input Section */}
       <div className="absolute z-[10] bottom-8 right-10 chats input-container bg-gray-800 bg-opacity-90 h-[7vh] flex items-center w-[43%] mx-auto rounded-full px-4">
@@ -236,22 +318,42 @@ const App: React.FC<InterviewProps> = () => {
             }
           }}
           style={{
-            paddingLeft: "50px", 
-            paddingTop: "4px",   
+            paddingLeft: "50px",
+            paddingTop: "4px",
           }}
         />
 
-
         {/* Speech section */}
         <div className="flex gap-4 items-center">
-        <span
+          {/* Recording button */}
+          <span
             className={`text-white text-4xl cursor-pointer transition-opacity duration-300 ${
-              isSpeechEnabled ? 'opacity-100' : 'opacity-50'
-            } ${isSpeaking ? 'animate-pulse' : ''}`}
-            onClick={toggleSpeech}
+              isRecording ? "text-red-500 animate-pulse" : "opacity-50"
+            }`}
+            onClick={toggleRecording}
           >
             🎙️
           </span>
+
+          {/* Text-to-Speech toggle button */}
+          <span
+            className={`text-white text-4xl cursor-pointer transition-opacity duration-300 ${
+              isSpeechEnabled ? "opacity-100" : "opacity-50"
+            } ${isSpeaking ? "animate-pulse" : ""}`}
+            onClick={toggleSpeech}
+          >
+            🔈
+          </span>
+
+          {/* Listening status text */}
+          {isRecording && (
+            <div className="flex items-center ml-2 animate-pulse">
+              <span className="text-red-500 text-2xl">🎤</span>
+              <span className="text-red-500 font-semibold ml-2">
+                Recording...
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
