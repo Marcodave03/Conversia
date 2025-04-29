@@ -21,6 +21,10 @@ const App: React.FC<InterviewProps> = () => {
   const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
+  const [currentExpression, setCurrentExpression] = useState<string | null>(null);
+  const [currentAnimation, setCurrentAnimation] = useState<string | null>(null);
+  const [currentMouthCues, setCurrentMouthCues] = useState<any[]>([]);
+  const [audioDuration, setAudioDuration] = useState<number>(0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [userInput, setUserInput] = useState("");
@@ -70,9 +74,17 @@ const App: React.FC<InterviewProps> = () => {
 
       const data = await response.json();
       const fullText = data.message?.text || "Maya belum bicara ya...";
+      const facialExpression = data.message?.facialExpression || null;
+      const animation = data.message?.animation || null;
+      const mouthCues = data.message?.lipsync?.mouthCues || [];
+      const soundDuration = data.message?.lipsync?.metadata?.duration || 2;
       const audioUrl = "http://localhost:5555/audios/response.mp3";
 
       setTypingText(""); // Clear any previous typing
+      setCurrentExpression(facialExpression);
+      setCurrentAnimation(animation);
+      setCurrentMouthCues(mouthCues);
+      setAudioDuration(soundDuration * 1000)
       setIsTyping(true);
 
       // Initialize audio
@@ -280,7 +292,12 @@ const App: React.FC<InterviewProps> = () => {
               style={{ width: "100%", height: "100%" }}
               gl={{ alpha: true, preserveDrawingBuffer: true }}
             >
-              <Experience />
+              <Experience 
+                expression={currentExpression}
+                animation={currentAnimation}
+                mouthCues={currentMouthCues}
+                audioDuration={audioDuration}
+              />
             </Canvas>
           </div>
         </div>

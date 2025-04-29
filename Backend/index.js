@@ -16,13 +16,11 @@ import path from "path";
 import multer from "multer";
 import fetch from "node-fetch";
 
-
 // Validate ENV setup
 console.log("ENV CHECK:", {
   OPENAI: process.env.OPENAI_API_KEY,
   ELEVEN: process.env.ELEVEN_LABS_API_KEY,
 });
-
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

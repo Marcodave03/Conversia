@@ -27,3 +27,6 @@ api.txt
 avatar
 response.mp3
 /audios/*
+Backend/audios/response.mp3
+Backend/audios/response.wav
+Backend/audios/response.json
