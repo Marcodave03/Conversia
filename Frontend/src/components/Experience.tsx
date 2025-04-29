@@ -28,7 +28,6 @@ export const Experience: React.FC<ExperienceProps> = ({
     <>
       <CameraControls ref={cameraControls} />
       <Environment preset="sunset" />
-      {/* Pass the props to Avatar */}
       <Avatar
         expression={expression}
         animation={animation}

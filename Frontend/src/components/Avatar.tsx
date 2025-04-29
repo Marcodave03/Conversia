@@ -123,29 +123,39 @@ export function Avatar({
 }: AvatarProps) {
   const group = useRef<THREE.Group>(null);
 
-  const { nodes, materials, scene } = useGLTF(
-    "/models/girl1.glb"
-  ) as GLTFResult;
-  const { animations } = useGLTF("/models/animations.glb") as GLTFResult & {
-    animations: THREE.AnimationClip[];
-  };
+  const { nodes, materials, scene } = useGLTF("/models/girl1.glb") as GLTFResult;
+  const { animations } = useGLTF("/models/animations.glb") as GLTFResult & { animations: THREE.AnimationClip[] };
   const { actions } = useAnimations(animations, group);
 
-  const [startTime] = useState(() => performance.now());
   const [blink, setBlink] = useState(false);
+  const [isTalking, setIsTalking] = useState(false);
+  const [startTime, setStartTime] = useState<number | null>(null); // ✅ fix this
 
-  // Play animation
+  // Play idle or animation
   useEffect(() => {
-    if (!animation) return;
-    if (actions[animation]) {
-      actions[animation].reset().fadeIn(0.5).play();
+    const idleAction = actions["Idle"];
+
+    if (!idleAction) {
+      console.warn("No 'Idle' animation found!");
+      return;
     }
+
+    if (!animation) {
+      idleAction.reset().fadeIn(0.5).play();
+    } else {
+      const requestedAction = actions[animation];
+      if (requestedAction) {
+        requestedAction.reset().fadeIn(0.5).play();
+      }
+    }
+
     return () => {
-      if (actions[animation]) actions[animation].fadeOut(0.5);
+      if (actions["Idle"]) actions["Idle"].fadeOut(0.5);
+      if (animation && actions[animation]) actions[animation].fadeOut(0.5);
     };
   }, [animation, actions]);
 
-  // Blink effect
+  // Blink
   useEffect(() => {
     let blinkTimeout: NodeJS.Timeout;
     const scheduleBlink = () => {
@@ -161,7 +171,13 @@ export function Avatar({
     return () => clearTimeout(blinkTimeout);
   }, []);
 
-  // Morph targets interpolator
+  // Watch for mouthCues change -> reset timer
+  useEffect(() => {
+    if (mouthCues.length > 0) {
+      setStartTime(performance.now());
+    }
+  }, [mouthCues]);
+
   const lerpMorphTarget = (target: string, value: number, speed = 0.1) => {
     scene.traverse((child) => {
       if ("morphTargetDictionary" in child) {
@@ -181,12 +197,47 @@ export function Avatar({
     });
   };
 
-  // Lipsync + Expression update every frame
   useFrame(() => {
-    const now = (performance.now() - startTime) / 1000; // seconds
 
-    // Facial Expression
+    let talkingNow = false;
+
+    if (startTime !== null && audioDuration > 0) {
+      const elapsed = (performance.now() - startTime) / 1000;
+      if (elapsed <= audioDuration / 1000) {
+        talkingNow = true;
+
+        let activeViseme: string | null = null;
+        for (const cue of mouthCues) {
+          if (elapsed >= cue.start && elapsed <= cue.end) {
+            activeViseme = correspondingViseme[cue.value as keyof typeof correspondingViseme];
+            break;
+          }
+        }
+
+        Object.values(correspondingViseme).forEach((viseme) => {
+          lerpMorphTarget(viseme, viseme === activeViseme ? 1 : 0, 0.2);
+        });
+      } else {
+        Object.values(correspondingViseme).forEach((viseme) => {
+          lerpMorphTarget(viseme, 0, 0.2);
+        });
+      }
+    }
+
+    if (talkingNow !== isTalking) {
+      setIsTalking(talkingNow);
+      if (!talkingNow && actions["Idle"]) {
+        actions["Idle"].reset().fadeIn(0.5).play(); // ✅ go back idle after talking
+      }
+    }
+
+    // Blinking
+    lerpMorphTarget("eyeBlinkLeft", blink ? 1 : 0, 0.3);
+    lerpMorphTarget("eyeBlinkRight", blink ? 1 : 0, 0.3);
+
+    // Expression when not talking
     if (
+      !talkingNow &&
       expression &&
       nodes.EyeLeft instanceof THREE.SkinnedMesh &&
       nodes.EyeLeft.morphTargetDictionary
@@ -195,27 +246,6 @@ export function Avatar({
       Object.keys(nodes.EyeLeft.morphTargetDictionary).forEach((key) => {
         if (key === "eyeBlinkLeft" || key === "eyeBlinkRight") return;
         lerpMorphTarget(key, face[key] || 0, 0.1);
-      });
-    }
-
-    // Blinking
-    lerpMorphTarget("eyeBlinkLeft", blink ? 1 : 0, 0.3);
-    lerpMorphTarget("eyeBlinkRight", blink ? 1 : 0, 0.3);
-
-    // Lipsync
-    if (mouthCues.length > 0 && audioDuration > 0) {
-      const time = now % (audioDuration / 1000);
-      let activeViseme = null;
-
-      for (const cue of mouthCues) {
-        if (time >= cue.start && time <= cue.end) {
-          activeViseme = correspondingViseme[cue.value as keyof typeof correspondingViseme];
-          break;
-        }
-      }
-
-      Object.values(correspondingViseme).forEach((viseme) => {
-        lerpMorphTarget(viseme, viseme === activeViseme ? 1 : 0, 0.2);
       });
     }
   });
