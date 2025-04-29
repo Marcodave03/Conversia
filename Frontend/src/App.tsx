@@ -6,6 +6,7 @@ import bgImage from "./assets/house-bg.jpg";
 import logo from "./assets/conversia-lg.png";
 import { useAuth } from "../src/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
+import { MouthCue } from "./components/Avatar";
 
 type Message = {
   message: string;
@@ -23,7 +24,7 @@ const App: React.FC<InterviewProps> = () => {
 
   const [currentExpression, setCurrentExpression] = useState<string | null>(null);
   const [currentAnimation, setCurrentAnimation] = useState<string | null>(null);
-  const [currentMouthCues, setCurrentMouthCues] = useState<any[]>([]);
+  const [currentMouthCues, setCurrentMouthCues] = useState<MouthCue[]>([]);
   const [audioDuration, setAudioDuration] = useState<number>(0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);

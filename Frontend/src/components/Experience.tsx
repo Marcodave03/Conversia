@@ -2,8 +2,8 @@ import { CameraControls, ContactShadows, Environment } from "@react-three/drei";
 import { useEffect, useRef } from "react";
 import { Avatar } from "./Avatar";
 
-// Import the MouthCue type from Avatar or a shared location
-import { MouthCue } from "./Avatar";
+// Import the MouthCue type from Avatar
+import type { MouthCue } from "./Avatar";
 
 type ExperienceProps = {
   expression: string | null;
@@ -28,8 +28,8 @@ export const Experience: React.FC<ExperienceProps> = ({
     <>
       <CameraControls ref={cameraControls} />
       <Environment preset="sunset" />
-      {/* Pass the props to Avatar too */}
-      <Avatar 
+      {/* Pass the props to Avatar */}
+      <Avatar
         expression={expression}
         animation={animation}
         mouthCues={mouthCues}
