@@ -4,16 +4,9 @@ import { Experience } from "./components/Experience";
 import Header from "./components/Header";
 import bgImage from "./assets/house-bg.jpg";
 import logo from "./assets/conversia-lg.png";
-import { useAuth } from '../src/hooks/useAuth';
+import { useAuth } from "../src/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-
-const API_KEY = "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";
-
-const systemMessage = {
-  role: "system",
-  content:
-    "Kamu jadi pacar perempuan aku, tanya kabar tentang aku dan keseharianku. Gunakan kata kata yang informal dan ngobrol layaknya manusia. kalimat tidak perlu terlalu panjang",
-};
+import { MouthCue } from "./components/Avatar";
 
 type Message = {
   message: string;
@@ -29,14 +22,25 @@ const App: React.FC<InterviewProps> = () => {
   const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
 
+  const [currentExpression, setCurrentExpression] = useState<string | null>(null);
+  const [currentAnimation, setCurrentAnimation] = useState<string | null>(null);
+  const [currentMouthCues, setCurrentMouthCues] = useState<MouthCue[]>([]);
+  const [audioDuration, setAudioDuration] = useState<number>(0);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const [userInput, setUserInput] = useState("");
+  const [typingText, setTypingText] = useState("");
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
+    null
+  );
+  const [loadingTranscription, setLoadingTranscription] = useState(false);
 
   // Redirect unauthorized users
   if (!isAuthenticated) {
-    navigate('/landing');
+    navigate("/landing");
     return null;
   }
 
@@ -58,56 +62,156 @@ const App: React.FC<InterviewProps> = () => {
   };
 
   async function processMessageToChatGPT(chatMessages: Message[]) {
-    const apiMessages = chatMessages.map((messageObject) => {
-      const role = messageObject.sender === "Maya" ? "assistant" : "user";
-      return { role, content: messageObject.message };
-    });
-
-    const apiRequestBody = {
-      model: "gpt-3.5-turbo",
-      messages: [systemMessage, ...apiMessages],
-    };
-
     try {
-      const response = await fetch(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(apiRequestBody),
-        }
-      );
-      const data = await response.json();
+      const lastMessage = chatMessages[chatMessages.length - 1];
 
-      const newMessage: Message = {
-        message: data.choices[0].message.content || "Pesan tidak tersedia",
-        sender: "Maya",
-        direction: "incoming",
+      const response = await fetch("http://localhost:5555/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: lastMessage.message }),
+      });
+
+      const data = await response.json();
+      const fullText = data.message?.text || "Maya belum bicara ya...";
+      const facialExpression = data.message?.facialExpression || null;
+      const animation = data.message?.animation || null;
+      const mouthCues = data.message?.lipsync?.mouthCues || [];
+      const soundDuration = data.message?.lipsync?.metadata?.duration || 2;
+      const audioUrl = "http://localhost:5555/audios/response.mp3";
+
+      setTypingText(""); // Clear any previous typing
+      setCurrentExpression(facialExpression);
+      setCurrentAnimation(animation);
+      setCurrentMouthCues(mouthCues);
+      setAudioDuration(soundDuration * 1000)
+      setIsTyping(true);
+
+      // Initialize audio
+      let audio: HTMLAudioElement | null = null;
+      let audioDuration = 0;
+
+      if (isSpeechEnabled && audioUrl) {
+        try {
+          // Bypass browser cache by appending a timestamp
+          const freshAudioUrl = `${audioUrl}?t=${new Date().getTime()}`;
+          const audioResponse = await fetch(freshAudioUrl);
+          const audioBlob = await audioResponse.blob();
+          const audioObjectUrl = URL.createObjectURL(audioBlob);
+
+          audio = new Audio(audioObjectUrl);
+
+          // add audio event listeners
+          audio.onplay = () => setIsSpeaking(true);
+          audio.onended = () => setIsSpeaking(false);
+
+          await audio.play();
+
+          audioDuration = audio.duration * 1000 || 2000; // Use duration to calculate typing delay
+        } catch (err) {
+          console.error("Error fetching or playing audio:", err);
+        }
+      }
+
+      // Determine typing speed based on audio duration
+      const duration = audioDuration || fullText.length * 50; // fallback
+      const interval = duration / fullText.length;
+
+      let index = 0;
+      let lastTime = performance.now();
+
+      const typeChar = (time: number) => {
+        if (time - lastTime >= interval && index < fullText.length) {
+          setTypingText((prev) => prev + fullText.charAt(index));
+          index++;
+          lastTime = time;
+        }
+
+        if (index < fullText.length) {
+          requestAnimationFrame(typeChar);
+        } else {
+          // Typing complete
+          setMessages((prev) => [
+            ...prev,
+            {
+              message: fullText,
+              sender: "Maya",
+              direction: "incoming",
+            },
+          ]);
+          setTypingText("");
+          setIsTyping(false);
+        }
       };
 
-      setMessages((prevMessages) => [...prevMessages, newMessage]);
-
-      if (isSpeechEnabled) {
-        speakMessage(newMessage.message);
-      }
+      requestAnimationFrame(typeChar);
     } catch (error) {
-      console.error("Error processing message:", error);
-    } finally {
+      console.error("Error talking to backend:", error);
       setIsTyping(false);
     }
   }
 
-  const speakMessage = (message: string) => {
-    const speech = new SpeechSynthesisUtterance(message);
-    speech.lang = "id-ID";
-    window.speechSynthesis.speak(speech);
-  };
-
   const toggleSpeech = () => {
     setIsSpeechEnabled(!isSpeechEnabled);
+  };
+
+  const toggleRecording = async () => {
+    if (isRecording) {
+      mediaRecorder?.stop();
+      setIsRecording(false);
+    } else {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        const recorder = new MediaRecorder(stream);
+        const audioChunks: Blob[] = [];
+
+        recorder.ondataavailable = (event) => {
+          audioChunks.push(event.data);
+        };
+
+        recorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+          const formData = new FormData();
+          formData.append("audio", audioBlob, "recording.webm");
+
+          try {
+            setLoadingTranscription(true); // === ADD THIS ===
+            const response = await fetch(
+              "http://localhost:5555/speech-to-text/full",
+              {
+                method: "POST",
+                body: formData,
+              }
+            );
+
+            const data = await response.json();
+            if (data?.message?.text) {
+              const newMessage: Message = {
+                message: data.transcription.trim(),
+                direction: "outgoing",
+                sender: "Aku",
+              };
+              setMessages((prev) => [...prev, newMessage]);
+              setIsTyping(true);
+              await processMessageToChatGPT([...messages, newMessage]);
+            }
+          } catch (err) {
+            console.error("Speech-to-Text failed:", err);
+          } finally {
+            setLoadingTranscription(false); // === ADD THIS ===
+          }
+        };
+
+        recorder.start();
+        setMediaRecorder(recorder);
+        setIsRecording(true);
+      } catch (err) {
+        console.error("Failed to start recording:", err);
+      }
+    }
   };
 
   return (
@@ -139,12 +243,12 @@ const App: React.FC<InterviewProps> = () => {
 
       <div className="flex-1 flex">
         <div className="w-full h-full relative">
-
           {/* Chat messages */}
-          <div className="h-[70vh] max-h-[70vh] overflow-y-auto space-y-4 p-4 absolute top-[10%] left-[55%] w-[43%] z-30"
-              style={{
-                position: 'relative'
-              }}
+          <div
+            className="h-[70vh] max-h-[70vh] overflow-y-auto space-y-4 p-4 absolute top-[10%] left-[55%] w-[43%] z-30"
+            style={{
+              position: "relative",
+            }}
           >
             <div className="fixed top-0 left-0 w-full h-32 bg-gradient-to-b from-[#000000]/30 to-transparent z-40 pointer-events-none"></div>
 
@@ -157,7 +261,9 @@ const App: React.FC<InterviewProps> = () => {
               >
                 <div
                   className={`max-w-[60%] p-3 rounded-xl text-lg ${
-                    msg.sender === "Maya" ? "bg-white" : "bg-blue-500 text-white"
+                    msg.sender === "Maya"
+                      ? "bg-white"
+                      : "bg-blue-500 text-white"
                   }`}
                 >
                   {msg.message}
@@ -165,11 +271,16 @@ const App: React.FC<InterviewProps> = () => {
               </div>
             ))}
 
-            {isTyping && (
+            {isTyping && typingText && (
               <div className="flex justify-start">
                 <div className="bg-white p-3 rounded-xl text-lg">
-                  typing...
+                  {typingText}
                 </div>
+              </div>
+            )}
+            {loadingTranscription && (
+              <div className="flex justify-center py-4">
+                <div className="w-8 h-8 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
               </div>
             )}
           </div>
@@ -182,12 +293,16 @@ const App: React.FC<InterviewProps> = () => {
               style={{ width: "100%", height: "100%" }}
               gl={{ alpha: true, preserveDrawingBuffer: true }}
             >
-              <Experience />
+              <Experience 
+                expression={currentExpression}
+                animation={currentAnimation}
+                mouthCues={currentMouthCues}
+                audioDuration={audioDuration}
+              />
             </Canvas>
           </div>
         </div>
       </div>
-
 
       {/* Input Section */}
       <div className="absolute z-[10] bottom-8 right-10 chats input-container bg-gray-800 bg-opacity-90 h-[7vh] flex items-center w-[43%] mx-auto rounded-full px-4">
@@ -203,25 +318,42 @@ const App: React.FC<InterviewProps> = () => {
             }
           }}
           style={{
-            paddingLeft: "50px", 
-            paddingTop: "4px",   
+            paddingLeft: "50px",
+            paddingTop: "4px",
           }}
         />
 
-
         {/* Speech section */}
         <div className="flex gap-4 items-center">
-        <span
-          className={`text-white text-4xl cursor-pointer ${isSpeechEnabled ? 'opacity-100' : 'opacity-50'}`}
-          onClick={toggleSpeech}
-          style={{
-            transform: 'scale(1.5)',
-            marginRight: '55px',     
-            marginTop: '2px',         
-          }}
-        >
-          🎙️
-        </span>
+          {/* Recording button */}
+          <span
+            className={`text-white text-4xl cursor-pointer transition-opacity duration-300 ${
+              isRecording ? "text-red-500 animate-pulse" : "opacity-50"
+            }`}
+            onClick={toggleRecording}
+          >
+            🎙️
+          </span>
+
+          {/* Text-to-Speech toggle button */}
+          <span
+            className={`text-white text-4xl cursor-pointer transition-opacity duration-300 ${
+              isSpeechEnabled ? "opacity-100" : "opacity-50"
+            } ${isSpeaking ? "animate-pulse" : ""}`}
+            onClick={toggleSpeech}
+          >
+            🔈
+          </span>
+
+          {/* Listening status text */}
+          {isRecording && (
+            <div className="flex items-center ml-2 animate-pulse">
+              <span className="text-red-500 text-2xl">🎤</span>
+              <span className="text-red-500 font-semibold ml-2">
+                Recording...
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
