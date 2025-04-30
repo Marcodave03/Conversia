@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Experience } from "./components/Experience";
 import Header from "./components/Header";
 import bgImage from "./assets/house-bg.jpg";
 import { MouthCue } from "./components/Avatar";
+import { motion, AnimatePresence } from 'framer-motion';
 
 
 type Message = {
@@ -20,6 +21,16 @@ const App: React.FC<InterviewProps> = () => {
   const [currentExpression, setCurrentExpression] = useState<string | null>(
     null
   );
+
+  // Hide intro after animation finishes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowIntro(false);
+    }, 3500); // typing duration + slide
+
+    return () => clearTimeout(timer);
+  }, []);
+
   const [currentAnimation, setCurrentAnimation] = useState<string | null>(null);
   const [currentMouthCues, setCurrentMouthCues] = useState<MouthCue[]>([]);
   const [audioDuration, setAudioDuration] = useState<number>(0);
@@ -34,6 +45,7 @@ const App: React.FC<InterviewProps> = () => {
     null
   );
   const [loadingTranscription, setLoadingTranscription] = useState(false);
+  const [showIntro, setShowIntro] = useState(true);
 
   const handleSend = async () => {
     if (!userInput.trim()) return;
@@ -206,6 +218,23 @@ const App: React.FC<InterviewProps> = () => {
   };
 
   return (
+    <>
+    <AnimatePresence>
+        {showIntro && (
+          <motion.div
+            className="fixed inset-0 bg-black flex justify-center items-center z-[1001]"
+            initial={{ y: 0 }}
+            animate={{ y: 0 }}
+            exit={{ y: "-100%" }}
+            transition={{ duration: 1 }}
+          >
+            <h1 className="text-blue-500 text-5xl md:text-7xl font-bold typing-effect">
+              Conversia
+            </h1>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     <div
       className="h-screen w-full flex flex-col overflow-hidden"
       style={{
@@ -333,6 +362,7 @@ const App: React.FC<InterviewProps> = () => {
         </div>
       </div>
     </div>
+    </>
   );
 };
 

@@ -40,7 +40,7 @@ const Wallet: React.FC = () => {
   return (
     <div className="text-white px-4 py-2 rounded-lg z-[50]">
       <ConnectButton />
-      <p>Wallet Status: {wallet.status}</p>
+      <p className="text-center">Wallet Status: {wallet.status}</p>
       {wallet.status === "connected" && (
         <>
           <p>Account: {wallet.account?.address}</p>
