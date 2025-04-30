@@ -4,9 +4,11 @@ import { Experience } from "./components/Experience";
 import Header from "./components/Header";
 import bgImage from "./assets/house-bg.jpg";
 import logo from "./assets/conversia-lg.png";
-import { useAuth } from "../src/hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+// import { useAuth } from "../src/hooks/useAuth";
+// import { useNavigate } from "react-router-dom";
 import { MouthCue } from "./components/Avatar";
+import { addressEllipsis, ConnectButton, useWallet } from "@suiet/wallet-kit";
+import "@suiet/wallet-kit/style.css";
 
 type Message = {
   message: string;
@@ -19,10 +21,13 @@ type InterviewProps = {
 };
 
 const App: React.FC<InterviewProps> = () => {
-  const { isAuthenticated, logout } = useAuth();
-  const navigate = useNavigate();
+  const wallet = useWallet();
+  // const { isAuthenticated, logout } = useAuth();
+  // const navigate = useNavigate();
 
-  const [currentExpression, setCurrentExpression] = useState<string | null>(null);
+  const [currentExpression, setCurrentExpression] = useState<string | null>(
+    null
+  );
   const [currentAnimation, setCurrentAnimation] = useState<string | null>(null);
   const [currentMouthCues, setCurrentMouthCues] = useState<MouthCue[]>([]);
   const [audioDuration, setAudioDuration] = useState<number>(0);
@@ -39,10 +44,10 @@ const App: React.FC<InterviewProps> = () => {
   const [loadingTranscription, setLoadingTranscription] = useState(false);
 
   // Redirect unauthorized users
-  if (!isAuthenticated) {
-    navigate("/landing");
-    return null;
-  }
+  // if (!isAuthenticated) {
+  //   navigate("/landing");
+  //   return null;
+  // }
 
   const handleSend = async () => {
     if (!userInput.trim()) return;
@@ -85,7 +90,7 @@ const App: React.FC<InterviewProps> = () => {
       setCurrentExpression(facialExpression);
       setCurrentAnimation(animation);
       setCurrentMouthCues(mouthCues);
-      setAudioDuration(soundDuration * 1000)
+      setAudioDuration(soundDuration * 1000);
       setIsTyping(true);
 
       // Initialize audio
@@ -234,12 +239,39 @@ const App: React.FC<InterviewProps> = () => {
 
       <Header />
 
-      <button
+      {/* <button
         className="absolute top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg z-[50]"
         onClick={logout}
       >
         Logout
-      </button>
+      </button> */}
+
+      <div className="absolute top-4 right-4  text-white px-4 py-2 rounded-lg z-[50]">
+        {" "}
+        <ConnectButton />
+        <p>
+          <span className="gradient">Wallet Address : </span>
+          {wallet.status}
+        </p>
+        {wallet.status === "connected" && (
+          <>
+            <p>
+              <span className="bg-gradient-to-tr"> Connected Account : </span>
+              {wallet.account?.address}
+            </p>
+            <p>
+              <span className="bg-gradient-to-t">
+                Connected Account with ellipsis
+              </span>
+              {addressEllipsis(wallet.account?.address || "")}
+            </p>
+            <p>
+              <span className="bg-gradient-to-t">Current chain of wallet</span>
+              {wallet.chain?.name}
+            </p>
+          </>
+        )}
+      </div>
 
       <div className="flex-1 flex">
         <div className="w-full h-full relative">
@@ -293,7 +325,7 @@ const App: React.FC<InterviewProps> = () => {
               style={{ width: "100%", height: "100%" }}
               gl={{ alpha: true, preserveDrawingBuffer: true }}
             >
-              <Experience 
+              <Experience
                 expression={currentExpression}
                 animation={currentAnimation}
                 mouthCues={currentMouthCues}
