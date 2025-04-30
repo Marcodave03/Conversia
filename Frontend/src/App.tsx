@@ -3,12 +3,8 @@ import { Canvas } from "@react-three/fiber";
 import { Experience } from "./components/Experience";
 import Header from "./components/Header";
 import bgImage from "./assets/house-bg.jpg";
-import logo from "./assets/conversia-lg.png";
-// import { useAuth } from "../src/hooks/useAuth";
-// import { useNavigate } from "react-router-dom";
 import { MouthCue } from "./components/Avatar";
-import { addressEllipsis, ConnectButton, useWallet } from "@suiet/wallet-kit";
-import "@suiet/wallet-kit/style.css";
+
 
 type Message = {
   message: string;
@@ -21,10 +17,6 @@ type InterviewProps = {
 };
 
 const App: React.FC<InterviewProps> = () => {
-  const wallet = useWallet();
-  // const { isAuthenticated, logout } = useAuth();
-  // const navigate = useNavigate();
-
   const [currentExpression, setCurrentExpression] = useState<string | null>(
     null
   );
@@ -42,12 +34,6 @@ const App: React.FC<InterviewProps> = () => {
     null
   );
   const [loadingTranscription, setLoadingTranscription] = useState(false);
-
-  // Redirect unauthorized users
-  // if (!isAuthenticated) {
-  //   navigate("/landing");
-  //   return null;
-  // }
 
   const handleSend = async () => {
     if (!userInput.trim()) return;
@@ -228,50 +214,8 @@ const App: React.FC<InterviewProps> = () => {
         backgroundPosition: "center",
       }}
     >
-      <a href="/" className="absolute top-1 left-4 z-50">
-        <img
-          src={logo}
-          alt="Conversia Logo"
-          style={{ height: "150px", width: "auto" }}
-          className="cursor-pointer shadow-lg rounded-full hover:opacity-80 transition-opacity duration-200"
-        />
-      </a>
-
+     
       <Header />
-
-      {/* <button
-        className="absolute top-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg z-[50]"
-        onClick={logout}
-      >
-        Logout
-      </button> */}
-
-      <div className="absolute top-4 right-4  text-white px-4 py-2 rounded-lg z-[50]">
-        {" "}
-        <ConnectButton />
-        <p>
-          <span className="gradient">Wallet Address : </span>
-          {wallet.status}
-        </p>
-        {wallet.status === "connected" && (
-          <>
-            <p>
-              <span className="bg-gradient-to-tr"> Connected Account : </span>
-              {wallet.account?.address}
-            </p>
-            <p>
-              <span className="bg-gradient-to-t">
-                Connected Account with ellipsis
-              </span>
-              {addressEllipsis(wallet.account?.address || "")}
-            </p>
-            <p>
-              <span className="bg-gradient-to-t">Current chain of wallet</span>
-              {wallet.chain?.name}
-            </p>
-          </>
-        )}
-      </div>
 
       <div className="flex-1 flex">
         <div className="w-full h-full relative">

@@ -34,7 +34,7 @@ const Profile: React.FC<ProfileProps> = ({ onClose }) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4 overflow-auto">
+    <div className="space-y-6 min-h-[500px] fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4 overflow-auto">
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-auto">
         {/* Header with close button */}
         <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
@@ -44,7 +44,7 @@ const Profile: React.FC<ProfileProps> = ({ onClose }) => {
           </Button>
         </div>
 
-        <div className="grid md:grid-cols-[280px_1fr] h-full">
+        <div className="grid space-y-6 min-h-[1000px] md:grid-cols-[280px_1fr] h-full">
           {/* Sidebar */}
           <div className="border-r dark:border-gray-700 p-6 flex flex-col items-center">
             <div className="relative mb-6 group">

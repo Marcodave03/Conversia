@@ -3,11 +3,9 @@
 // import { useNavigate } from 'react-router-dom';
 import bgImage from '../assets/landing-bg.jpg';
 import logo from '../assets/conversia-lg.png';
-import { addressEllipsis, ConnectButton, useWallet } from "@suiet/wallet-kit";
-import "@suiet/wallet-kit/style.css"; 
+import Wallet from '../components/Wallet';
 
 const LandingPage: React.FC = () => {
-  const wallet = useWallet();
   // const { login, signup } = useAuth();
   // const navigate = useNavigate();
   
@@ -45,27 +43,7 @@ const LandingPage: React.FC = () => {
         className="w-82 h-32 mb-6" 
       />
 
-      <ConnectButton />
-      <p>
-        <span className='gradient'>Wallet Address : </span>{wallet.status}
-      </p>
-      {wallet.status === 'connected' && (
-        <>
-          <p>
-            <span className="bg-gradient-to-tr"> Connected Account : </span>
-            {wallet.account?.address}
-          </p>
-          <p>
-            <span className="bg-gradient-to-t">Connected Account with ellipsis</span>
-            {addressEllipsis(wallet.account?.address || '')}
-          </p>
-          <p>
-            <span className="bg-gradient-to-t">Current chain of wallet</span>
-            {wallet.chain?.name}
-          </p>
-          </>
-      )}
-          
+      <Wallet/>
 
       {/* <div className="bg-gray-800 bg-opacity-90 p-8 rounded-lg shadow-md w-96">
         <h2 className="text-2xl font-bold mb-4">{isLogin ? 'Sign In' : 'Sign Up'}</h2>

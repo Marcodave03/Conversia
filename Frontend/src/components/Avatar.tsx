@@ -336,5 +336,8 @@ useGLTF.preload("/models/girl1.glb");
 useGLTF.preload("/models/boy.glb");
 useGLTF.preload("/models/girl2.glb");
 useGLTF.preload("/models/girl3.glb");
+useGLTF.preload("/models/girl4.glb");
+useGLTF.preload("/models/girl5.glb");
+useGLTF.preload("/models/girl6.glb");
 useGLTF.preload("/models/girl2benertapi.glb");
 useGLTF.preload("/models/animations.glb");
