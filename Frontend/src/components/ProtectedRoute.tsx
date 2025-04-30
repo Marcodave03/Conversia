@@ -1,11 +1,11 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useWallet } from '@suiet/wallet-kit';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { currentUser } = useAuth();
+  const wallet = useWallet();
 
-    return currentUser ? <>{children}</> : <Navigate to="/landing" />;
+  return wallet.status === 'connected' ? <>{children}</> : <Navigate to="/landing" />;
 };
 
 export default ProtectedRoute;
