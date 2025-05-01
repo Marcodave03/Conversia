@@ -7,11 +7,14 @@ import logo from "../assets/conversia-lg.png";
 import { useWallet } from "@suiet/wallet-kit";
 import { useNavigate } from "react-router-dom";
 
-const Header: React.FC = () => {
+type HeaderProps = {
+  setModelUrl: (url: string) => void;
+};
+
+const Header: React.FC<HeaderProps> = ({ setModelUrl }) =>{
   const [showProfile, setShowProfile] = useState(false);
   const [showBackground, setShowBackground] = useState(false);
   const [showAvatar, setShowAvatar] = useState(false);
-  const [modelUrl, setModelUrl] = useState<string | null>(null);
   const wallet = useWallet();
   const navigate = useNavigate();
 
@@ -23,11 +26,11 @@ const Header: React.FC = () => {
   }, [wallet.status, navigate]);
 
   // Debug: show selected model URL (you can remove this in production)
-  useEffect(() => {
-    if (modelUrl) {
-      console.log("Selected avatar model:", modelUrl);
-    }
-  }, [modelUrl]);
+  // useEffect(() => {
+  //   if (modelUrl) {
+  //     console.log("Selected avatar model:", modelUrl);
+  //   }
+  // }, [modelUrl]);
 
   return (
     <>
@@ -85,7 +88,7 @@ const Header: React.FC = () => {
         <AvatarPick
           userId={2}
           onClose={() => setShowAvatar(false)}
-          onSelectAvatar={(modelUrl) => setModelUrl(modelUrl)}
+          onSelectAvatar={(modelUrl) => setModelUrl(modelUrl)} 
         />
       )}
     </>
