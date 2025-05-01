@@ -33,7 +33,7 @@ export const Experience: React.FC<ExperienceProps> = ({
         animation={animation}
         mouthCues={mouthCues}
         audioDuration={audioDuration}
-        modelUrl="/models/girl7.glb"
+        modelUrl="/models/girl4.glb"
       />
       <ContactShadows opacity={0.7} />
     </>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Experience } from "./components/Experience";
 import Header from "./components/Header";
-import bgImage from "./assets/house-bg.jpg";
+import bgImage from "./assets/conversia-bg.png";
 import { MouthCue } from "./components/Avatar";
 import { motion, AnimatePresence } from 'framer-motion';
 
