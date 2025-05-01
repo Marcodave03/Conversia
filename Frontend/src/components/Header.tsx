@@ -9,9 +9,11 @@ import { useNavigate } from "react-router-dom";
 
 type HeaderProps = {
   setModelUrl: (url: string) => void;
+  setBackgroundUrl: (url: string) => void; 
 };
 
-const Header: React.FC<HeaderProps> = ({ setModelUrl }) =>{
+
+const Header: React.FC<HeaderProps> = ({ setModelUrl,setBackgroundUrl }) => {
   const [showProfile, setShowProfile] = useState(false);
   const [showBackground, setShowBackground] = useState(false);
   const [showAvatar, setShowAvatar] = useState(false);
@@ -39,7 +41,11 @@ const Header: React.FC<HeaderProps> = ({ setModelUrl }) =>{
         href="/"
         className="fixed top-6 left-4 z-50 bg-white/10 backdrop-blur-xl rounded-full shadow-md p-2 transition hover:opacity-90"
       >
-        <img src={logo} alt="Conversia Logo" className="h-12 w-auto object-contain" />
+        <img
+          src={logo}
+          alt="Conversia Logo"
+          className="h-12 w-auto object-contain"
+        />
       </a>
 
       {/* Navigation Bar */}
@@ -83,12 +89,17 @@ const Header: React.FC<HeaderProps> = ({ setModelUrl }) =>{
 
       {/* Popups */}
       {showProfile && <Profile onClose={() => setShowProfile(false)} />}
-      {showBackground && <About onClose={() => setShowBackground(false)} />}
+      {showBackground && (
+        <About
+          onClose={() => setShowBackground(false)}
+          onSelectBackground={(url) => setBackgroundUrl(url)} // ✅ pass back
+        />
+      )}
       {showAvatar && (
         <AvatarPick
           userId={2}
           onClose={() => setShowAvatar(false)}
-          onSelectAvatar={(modelUrl) => setModelUrl(modelUrl)} 
+          onSelectAvatar={(modelUrl) => setModelUrl(modelUrl)}
         />
       )}
     </>

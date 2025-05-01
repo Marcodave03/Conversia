@@ -1,28 +1,45 @@
-import React from "react"
-import Background1 from "../assets/house-bg.jpg"
-import Background2 from "../assets/garage-bg.jpg"
-import Background3 from "../assets/conversia-bg.png"
+import React, { useEffect, useState } from "react";
+import Background1 from "../assets/house-bg.jpg";
+import Background2 from "../assets/garage-bg.jpg";
+import Background3 from "../assets/conversia-bg.png";
 
 interface BackgroundOption {
-  id: string
-  src: string
-  alt: string
+  id: string;
+  src: string;
+  alt: string;
+  image_id: number;
+  owned: boolean;
 }
 
 interface BackgroundProps {
-  onClose: () => void
+  onClose: () => void;
+  onSelectBackground: (backgroundUrl: string) => void; // ✅ Add this
 }
 
-const cn = (...classes: (string | false | undefined)[]) => classes.filter(Boolean).join(" ")
+const cn = (...classes: (string | false | undefined)[]) => classes.filter(Boolean).join(" ");
 
-const Background: React.FC<BackgroundProps> = ({ onClose }) => {
-  const backgrounds: BackgroundOption[] = [
-    { id: "bg1", src: Background1, alt: "House Background" },
-    { id: "bg2", src: Background2, alt: "Garage Background" },
-    { id: "bg3", src: Background3, alt: "Conversia Background" },
-  ]
+const Background: React.FC<BackgroundProps> = ({ onClose, onSelectBackground }) => {
+  const [selectedBackground, setSelectedBackground] = useState<BackgroundOption | null>(null);
+  const [backgrounds, setBackgrounds] = useState<BackgroundOption[]>([
+    { id: "bg1", image_id: 1, src: Background1, alt: "House Background", owned: false },
+    { id: "bg2", image_id: 2, src: Background2, alt: "Garage Background", owned: false },
+    { id: "bg3", image_id: 3, src: Background3, alt: "Conversia Background", owned: false },
+  ]);
 
-  const [selectedBackground, setSelectedBackground] = React.useState<string | null>(null)
+  useEffect(() => {
+    fetch("http://localhost:5555/api/conversia/users/2/background")
+      .then((res) => res.json())
+      .then((data) => {
+        const ownedImageIds = data.map((b: { image_id: number }) => b.image_id);
+        setBackgrounds((prev) =>
+          prev.map((bg) => ({
+            ...bg,
+            owned: ownedImageIds.includes(bg.image_id),
+          }))
+        );
+      })
+      .catch((err) => console.error("Failed to fetch backgrounds:", err));
+  }, []);
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-auto">
@@ -39,21 +56,20 @@ const Background: React.FC<BackgroundProps> = ({ onClose }) => {
             <div
               key={bg.id}
               className={cn(
-                "relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all",
-                selectedBackground === bg.id ? "border-blue-500" : "border-transparent",
-                "hover:shadow-lg"
+                "relative rounded-lg overflow-hidden border-2 transition-all",
+                bg.owned
+                  ? "cursor-pointer hover:shadow-lg"
+                  : "cursor-not-allowed opacity-60 grayscale",
+                selectedBackground?.image_id === bg.image_id ? "border-blue-500" : "border-transparent"
               )}
-              onClick={() => setSelectedBackground(bg.id)}
+              onClick={() => bg.owned && setSelectedBackground(bg)}
             >
               <div className="aspect-video relative">
-                <img
-                  src={bg.src}
-                  alt={bg.alt}
-                  className="w-full h-full object-cover"
-                />
+                <img src={bg.src} alt={bg.alt} className="w-full h-full object-cover" />
               </div>
               <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-2 text-sm">
                 {bg.alt}
+                {!bg.owned && <span className="ml-2 text-xs opacity-75">(Not owned)</span>}
               </div>
             </div>
           ))}
@@ -67,7 +83,12 @@ const Background: React.FC<BackgroundProps> = ({ onClose }) => {
             Cancel
           </button>
           <button
-            onClick={onClose}
+            onClick={() => {
+              if (selectedBackground) {
+                onSelectBackground(selectedBackground.src); // ✅ Pass to parent
+                onClose();
+              }
+            }}
             className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
             disabled={!selectedBackground}
           >
@@ -76,7 +97,7 @@ const Background: React.FC<BackgroundProps> = ({ onClose }) => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Background
+export default Background;

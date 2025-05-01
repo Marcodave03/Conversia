@@ -22,6 +22,7 @@ const App: React.FC<InterviewProps> = () => {
     null
   );
   const [modelUrl, setModelUrl] = useState<string>("/models/girl1.glb"); // default avatar
+  const [backgroundUrl, setBackgroundUrl] = useState<string>(bgImage); // use default bg as fallback
 
   // Hide intro after animation finishes
   useEffect(() => {
@@ -239,13 +240,14 @@ const App: React.FC<InterviewProps> = () => {
     <div
       className="h-screen w-full flex flex-col overflow-hidden"
       style={{
-        backgroundImage: `url(${bgImage})`,
+        backgroundImage: `url(${backgroundUrl})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
+        transition: "background-image 0.5s ease",
       }}
     >
      
-      <Header setModelUrl={setModelUrl} />
+     <Header setModelUrl={setModelUrl} setBackgroundUrl={setBackgroundUrl} />
 
       <div className="flex-1 flex">
         <div className="w-full h-full relative">
