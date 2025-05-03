@@ -9,11 +9,17 @@ import { useNavigate } from "react-router-dom";
 
 type HeaderProps = {
   setModelUrl: (url: string) => void;
-  setBackgroundUrl: (url: string) => void; 
+  setBackgroundUrl: (url: string) => void;
+  setModelId: (id: number) => void;
+  userId: number;
 };
 
-
-const Header: React.FC<HeaderProps> = ({ setModelUrl,setBackgroundUrl }) => {
+const Header: React.FC<HeaderProps> = ({
+  setModelUrl,
+  setBackgroundUrl,
+  setModelId,
+  userId,
+}) => {
   const [showProfile, setShowProfile] = useState(false);
   const [showBackground, setShowBackground] = useState(false);
   const [showAvatar, setShowAvatar] = useState(false);
@@ -96,10 +102,18 @@ const Header: React.FC<HeaderProps> = ({ setModelUrl,setBackgroundUrl }) => {
         />
       )}
       {showAvatar && (
+        // <AvatarPick
+        //   userId={2}
+        //   onClose={() => setShowAvatar(false)}
+        //   onSelectAvatar={(modelUrl) => setModelUrl(modelUrl)}
+        // />
         <AvatarPick
-          userId={2}
+          userId={userId} // ✅ Use actual userId
           onClose={() => setShowAvatar(false)}
-          onSelectAvatar={(modelUrl) => setModelUrl(modelUrl)}
+          onSelectAvatar={(modelUrl, modelId) => {
+            setModelUrl(modelUrl);
+            setModelId(modelId);
+          }}
         />
       )}
     </>

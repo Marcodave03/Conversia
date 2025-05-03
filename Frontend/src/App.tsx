@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Experience } from "./components/Experience";
 import Header from "./components/Header";
 import bgImage from "./assets/conversia-bg.png";
 import { MouthCue } from "./components/Avatar";
-import { motion, AnimatePresence } from 'framer-motion';
-
+import { motion, AnimatePresence } from "framer-motion";
+import { useWallet } from "@suiet/wallet-kit";
 
 type Message = {
   message: string;
@@ -17,7 +17,15 @@ type InterviewProps = {
   interview_prompt: string | undefined;
 };
 
+type ChatHistoryItem = {
+  message: string;
+  sender: "user" | "system";
+};
+
 const App: React.FC<InterviewProps> = () => {
+  const wallet = useWallet();
+  const [modelId, setModelId] = useState<number>(1);
+  const [userId, setUserId] = useState<number>();
   const [currentExpression, setCurrentExpression] = useState<string | null>(
     null
   );
@@ -32,6 +40,63 @@ const App: React.FC<InterviewProps> = () => {
 
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    const ensureUserExists = async () => {
+      const walletAddress = wallet.account?.address;
+      if (!walletAddress) return;
+
+      try {
+        // Create or get user by wallet address
+        const res = await fetch("http://localhost:5555/api/conversia/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sui_id: walletAddress,
+            username: "anonymous", // or get username from somewhere else
+          }),
+        });
+
+        const data = await res.json();
+        if (data.user?.user_id) {
+          setUserId(data.user.user_id);
+        }
+      } catch (err) {
+        console.error("Failed to ensure user:", err);
+      }
+    };
+
+    if (wallet.status === "connected") {
+      ensureUserExists();
+    }
+  }, [wallet]);
+
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      if (!userId || !modelId) return;
+
+      try {
+        const res = await fetch(
+          `http://localhost:5555/api/conversia/chat-history/${userId}/${modelId}`
+        );
+        const data = await res.json();
+
+        const formatted = (data as ChatHistoryItem[]).map(
+          (msg): Message => ({
+            message: msg.message,
+            sender: msg.sender === "user" ? "Aku" : "Maya",
+            direction: msg.sender === "user" ? "outgoing" : "incoming",
+          })
+        );
+
+        setMessages(formatted);
+      } catch (error) {
+        console.error("Failed to load chat history:", error);
+      }
+    };
+
+    loadChatHistory();
+  }, [userId, modelId]);
 
   const [currentAnimation, setCurrentAnimation] = useState<string | null>(null);
   const [currentMouthCues, setCurrentMouthCues] = useState<MouthCue[]>([]);
@@ -48,6 +113,7 @@ const App: React.FC<InterviewProps> = () => {
   );
   const [loadingTranscription, setLoadingTranscription] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const handleSend = async () => {
     if (!userInput.trim()) return;
@@ -63,6 +129,25 @@ const App: React.FC<InterviewProps> = () => {
     setMessages(newMessages);
     setUserInput("");
     setIsTyping(true);
+
+    try {
+      await fetch(
+        `http://localhost:5555/api/conversia/chat-history/${userId}/${modelId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: userInput,
+            sender: "user",
+          }),
+        }
+      );
+    } catch (error) {
+      console.error("Failed to save user message:", error);
+    }
+
     await processMessageToChatGPT(newMessages);
   };
 
@@ -99,28 +184,23 @@ const App: React.FC<InterviewProps> = () => {
 
       if (isSpeechEnabled && audioUrl) {
         try {
-          // Bypass browser cache by appending a timestamp
           const freshAudioUrl = `${audioUrl}?t=${new Date().getTime()}`;
           const audioResponse = await fetch(freshAudioUrl);
           const audioBlob = await audioResponse.blob();
           const audioObjectUrl = URL.createObjectURL(audioBlob);
 
           audio = new Audio(audioObjectUrl);
-
-          // add audio event listeners
           audio.onplay = () => setIsSpeaking(true);
           audio.onended = () => setIsSpeaking(false);
-
           await audio.play();
 
-          audioDuration = audio.duration * 1000 || 2000; // Use duration to calculate typing delay
+          audioDuration = audio.duration * 1000 || 2000;
         } catch (err) {
           console.error("Error fetching or playing audio:", err);
         }
       }
 
-      // Determine typing speed based on audio duration
-      const duration = audioDuration || fullText.length * 50; // fallback
+      const duration = audioDuration || fullText.length * 50;
       const interval = duration / fullText.length;
 
       let index = 0;
@@ -136,17 +216,32 @@ const App: React.FC<InterviewProps> = () => {
         if (index < fullText.length) {
           requestAnimationFrame(typeChar);
         } else {
-          // Typing complete
-          setMessages((prev) => [
-            ...prev,
-            {
-              message: fullText,
-              sender: "Maya",
-              direction: "incoming",
-            },
-          ]);
+          const aiMessage: Message = {
+            message: fullText,
+            sender: "Maya",
+            direction: "incoming",
+          };
+
+          setMessages((prev) => [...prev, aiMessage]);
           setTypingText("");
           setIsTyping(false);
+
+          // 🔧 Save message to backend (no await here)
+          fetch(
+            `http://localhost:5555/api/conversia/chat-history/${userId}/${modelId}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                message: fullText,
+                sender: "system",
+              }),
+            }
+          ).catch((error) =>
+            console.error("Failed to save system message:", error)
+          );
         }
       };
 
@@ -219,9 +314,14 @@ const App: React.FC<InterviewProps> = () => {
     }
   };
 
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, typingText]);
+
+
   return (
     <>
-    <AnimatePresence>
+      <AnimatePresence>
         {showIntro && (
           <motion.div
             className="fixed inset-0 bg-black flex justify-center items-center z-[1001]"
@@ -237,135 +337,143 @@ const App: React.FC<InterviewProps> = () => {
         )}
       </AnimatePresence>
 
-    <div
-      className="h-screen w-full flex flex-col overflow-hidden"
-      style={{
-        backgroundImage: `url(${backgroundUrl})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        transition: "background-image 0.5s ease",
-      }}
-    >
-     
-     <Header setModelUrl={setModelUrl} setBackgroundUrl={setBackgroundUrl} />
+      <div
+        className="h-screen w-full flex flex-col overflow-hidden"
+        style={{
+          backgroundImage: `url(${backgroundUrl})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          transition: "background-image 0.5s ease",
+        }}
+      >
+        <Header
+          setModelUrl={setModelUrl}
+          setBackgroundUrl={setBackgroundUrl}
+          setModelId={setModelId}
+          userId={userId} 
+        />
+        <div className="flex-1 flex">
+          <div className="w-full h-full relative">
+            {/* Chat messages */}
+            <div
+              className="h-[80vh] overflow-y-auto scrollbar-none  space-y-4 p-4 absolute top-[10%] left-[55%] w-[43%] z-30"
+              style={{
+                position: "relative",
+                scrollbarWidth: "thin",        
+                scrollbarColor: "#FFFFFFFF transparent" 
+              }}
+            >
+              <div className="fixed top-0 left-0 w-full h-32 bg-gradient-to-b from-[#000000]/30 to-transparent z-40 pointer-events-none"></div>
 
-      <div className="flex-1 flex">
-        <div className="w-full h-full relative">
-          {/* Chat messages */}
-          <div
-            className="h-[70vh] max-h-[70vh] overflow-y-auto space-y-4 p-4 absolute top-[10%] left-[55%] w-[43%] z-30"
-            style={{
-              position: "relative",
-            }}
-          >
-            <div className="fixed top-0 left-0 w-full h-32 bg-gradient-to-b from-[#000000]/30 to-transparent z-40 pointer-events-none"></div>
-
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                className={`flex ${
-                  msg.direction === "outgoing" ? "justify-end" : "justify-start"
-                }`}
-              >
+              {messages.map((msg, index) => (
                 <div
-                  className={`max-w-[60%] p-3 rounded-xl text-lg ${
-                    msg.sender === "Maya"
-                      ? "bg-white"
-                      : "bg-blue-500 text-white"
+                  key={index}
+                  className={`flex ${
+                    msg.direction === "outgoing"
+                      ? "justify-end"
+                      : "justify-start"
                   }`}
                 >
-                  {msg.message}
+                  <div
+                    className={`max-w-[60%] p-3 rounded-xl text-lg ${
+                      msg.sender === "Maya"
+                        ? "bg-white"
+                        : "bg-blue-500 text-white"
+                    }`}
+                  >
+                    {msg.message}
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
 
-            {isTyping && typingText && (
-              <div className="flex justify-start">
-                <div className="bg-white p-3 rounded-xl text-lg">
-                  {typingText}
+              {isTyping && typingText && (
+                <div className="flex justify-start">
+                  <div className="bg-white p-3 rounded-xl text-lg">
+                    {typingText}
+                  </div>
                 </div>
-              </div>
-            )}
-            {loadingTranscription && (
-              <div className="flex justify-center py-4">
-                <div className="w-8 h-8 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
-              </div>
-            )}
-          </div>
-
-          {/* Avatar (with lower z-index) */}
-          <div className="absolute left-0 bottom-0 w-[50vw] h-[100vh] z-20 bg-transparent">
-            <Canvas
-              shadows
-              camera={{ position: [0, -0.5, 1], fov: 10 }}
-              style={{ width: "100%", height: "100%" }}
-              gl={{ alpha: true, preserveDrawingBuffer: true }}
-            >
-              <Experience
-                expression={currentExpression}
-                animation={currentAnimation}
-                mouthCues={currentMouthCues}
-                audioDuration={audioDuration}
-                modelUrl={modelUrl}
-              />
-            </Canvas>
-          </div>
-        </div>
-      </div>
-
-      {/* Input Section */}
-      <div className="absolute z-[10] bottom-8 right-10 chats input-container bg-gray-800 bg-opacity-90 h-[7vh] flex items-center w-[43%] mx-auto rounded-full px-4">
-        <input
-          type="text"
-          value={userInput}
-          onChange={(e) => setUserInput(e.target.value)}
-          placeholder="Start typing ..."
-          className="border-none bg-transparent w-full text-white placeholder-white placeholder-opacity-70 text-2xl focus:outline-none px-4 py-2"
-          onKeyPress={(e) => {
-            if (e.key === "Enter") {
-              handleSend();
-            }
-          }}
-          style={{
-            paddingLeft: "50px",
-            paddingTop: "4px",
-          }}
-        />
-
-        {/* Speech section */}
-        <div className="flex gap-4 items-center">
-          {/* Recording button */}
-          <span
-            className={`text-white text-4xl cursor-pointer transition-opacity duration-300 ${
-              isRecording ? "text-red-500 animate-pulse" : "opacity-50"
-            }`}
-            onClick={toggleRecording}
-          >
-            🎙️
-          </span>
-
-          {/* Text-to-Speech toggle button */}
-          <span
-            className={`text-white text-4xl cursor-pointer transition-opacity duration-300 ${
-              isSpeechEnabled ? "opacity-100" : "opacity-50"
-            } ${isSpeaking ? "animate-pulse" : ""}`}
-            onClick={toggleSpeech}
-          >
-            🔈
-          </span>
-
-          {/* Listening status text */}
-          {isRecording && (
-            <div className="flex items-center ml-2 animate-pulse">
-              <span className="text-red-500 text-2xl">🎤</span>
-              <span className="text-red-500 font-semibold ml-2">
-                Recording...
-              </span>
+              )}
+              {loadingTranscription && (
+                <div className="flex justify-center py-4">
+                  <div className="w-8 h-8 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
+                </div>
+              )}
+              <div ref={bottomRef} />
             </div>
-          )}
+
+            {/* Avatar (with lower z-index) */}
+            <div className="absolute left-0 bottom-0 w-[50vw] h-[100vh] z-20 bg-transparent">
+              <Canvas
+                shadows
+                camera={{ position: [0, -0.5, 1], fov: 10 }}
+                style={{ width: "100%", height: "100%" }}
+                gl={{ alpha: true, preserveDrawingBuffer: true }}
+              >
+                <Experience
+                  expression={currentExpression}
+                  animation={currentAnimation}
+                  mouthCues={currentMouthCues}
+                  audioDuration={audioDuration}
+                  modelUrl={modelUrl}
+                />
+              </Canvas>
+            </div>
+          </div>
+        </div>
+
+        {/* Input Section */}
+        <div className="absolute z-[10] bottom-8 right-10 chats input-container bg-gray-800 bg-opacity-90 h-[7vh] flex items-center w-[43%] mx-auto rounded-full px-4">
+          <input
+            type="text"
+            value={userInput}
+            onChange={(e) => setUserInput(e.target.value)}
+            placeholder="Start typing ..."
+            className="border-none bg-transparent w-full text-white placeholder-white placeholder-opacity-70 text-2xl focus:outline-none px-4 py-2"
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                handleSend();
+              }
+            }}
+            style={{
+              paddingLeft: "50px",
+              paddingTop: "4px",
+            }}
+          />
+
+          {/* Speech section */}
+          <div className="flex gap-4 items-center">
+            {/* Recording button */}
+            <span
+              className={`text-white text-4xl cursor-pointer transition-opacity duration-300 ${
+                isRecording ? "text-red-500 animate-pulse" : "opacity-50"
+              }`}
+              onClick={toggleRecording}
+            >
+              🎙️
+            </span>
+
+            {/* Text-to-Speech toggle button */}
+            <span
+              className={`text-white text-4xl cursor-pointer transition-opacity duration-300 ${
+                isSpeechEnabled ? "opacity-100" : "opacity-50"
+              } ${isSpeaking ? "animate-pulse" : ""}`}
+              onClick={toggleSpeech}
+            >
+              🔈
+            </span>
+
+            {/* Listening status text */}
+            {isRecording && (
+              <div className="flex items-center ml-2 animate-pulse">
+                <span className="text-red-500 text-2xl">🎤</span>
+                <span className="text-red-500 font-semibold ml-2">
+                  Recording...
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
     </>
   );
 };

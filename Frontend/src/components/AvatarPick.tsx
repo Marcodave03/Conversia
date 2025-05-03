@@ -7,7 +7,7 @@ import Girl5 from "../assets/girl5.png";
 import Boy1 from "../assets/boy1.png";
 
 interface Avatar {
-  id: string; // this should match model_id from API
+  id: string;
   src: string;
   alt: string;
   modelUrl: string;
@@ -16,7 +16,7 @@ interface Avatar {
 
 interface AvatarPickProps {
   onClose: () => void;
-  onSelectAvatar: (modelUrl: string) => void;
+  onSelectAvatar: (modelUrl: string, modelId: number) => void;
   userId: number;
 }
 
@@ -32,7 +32,6 @@ const modelIdToAvatarId: Record<number, string> = {
   5: "girl5",
   6: "boy1",
 };
-
 
 const avatarCatalog: Avatar[] = [
   { id: "girl1", src: Girl1, alt: "Girl Avatar 1", modelUrl: "/models/girl1.glb", owned: false },
@@ -55,8 +54,7 @@ const AvatarPick: React.FC<AvatarPickProps> = ({ onClose, onSelectAvatar, userId
       .then((data: UserAvatar[]) => {
         const ownedAvatarIds = data
           .map((item) => modelIdToAvatarId[parseInt(item.model_id)])
-          .filter(Boolean); // remove undefined
-  
+          .filter(Boolean);
         const updatedAvatars = avatarCatalog.map((avatar) => ({
           ...avatar,
           owned: ownedAvatarIds.includes(avatar.id),
@@ -66,21 +64,20 @@ const AvatarPick: React.FC<AvatarPickProps> = ({ onClose, onSelectAvatar, userId
       .catch((err) => console.error("Failed to fetch avatars:", err));
   }, [userId]);
 
-  
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-auto">
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-[90%] max-w-4xl min-h-[700px] p-6">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-[90%] max-w-4xl min-h-[700px] p-6 flex flex-col">
         <h2 className="text-3xl font-bold mb-4">Pick Your Avatar</h2>
         <p className="text-gray-500 dark:text-gray-400 mb-6">
           Select from your owned avatars. Greyed-out avatars are not owned.
         </p>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-6">
           {avatars.map((avatar) => (
             <div
               key={avatar.id}
               className={cn(
-                "relative rounded-lg overflow-hidden border-2 transition-all",
+                "relative rounded-lg overflow-hidden border-4 transition-all",
                 avatar.owned
                   ? "cursor-pointer hover:shadow-lg"
                   : "cursor-not-allowed opacity-60",
@@ -103,7 +100,7 @@ const AvatarPick: React.FC<AvatarPickProps> = ({ onClose, onSelectAvatar, userId
           ))}
         </div>
 
-        <div className="flex justify-between mt-6">
+        <div className="flex justify-between mt-auto pt-6">
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-md border border-gray-300 bg-white hover:bg-gray-100"
@@ -113,8 +110,13 @@ const AvatarPick: React.FC<AvatarPickProps> = ({ onClose, onSelectAvatar, userId
           <button
             onClick={() => {
               if (selectedAvatar) {
-                onSelectAvatar(selectedAvatar.modelUrl);
-                onClose();
+                const modelId = Object.entries(modelIdToAvatarId).find(
+                  ([, avatarId]) => avatarId === selectedAvatar.id
+                )?.[0];
+                if (modelId) {
+                  onSelectAvatar(selectedAvatar.modelUrl, parseInt(modelId));
+                  onClose();
+                }
               }
             }}
             className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"

@@ -13,7 +13,7 @@ interface BackgroundOption {
 
 interface BackgroundProps {
   onClose: () => void;
-  onSelectBackground: (backgroundUrl: string) => void; // ✅ Add this
+  onSelectBackground: (backgroundUrl: string) => void;
 }
 
 const cn = (...classes: (string | false | undefined)[]) => classes.filter(Boolean).join(" ");
@@ -43,20 +43,18 @@ const Background: React.FC<BackgroundProps> = ({ onClose, onSelectBackground }) 
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-auto">
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-[90%] max-w-4xl min-h-[500px] p-6">
-        <div className="mb-4">
-          <h2 className="text-3xl font-bold">Select Background</h2>
-          <p className="text-gray-500 dark:text-gray-400">
-            Choose a background for your avatar scene.
-          </p>
-        </div>
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-[90%] max-w-4xl min-h-[700px] p-6 flex flex-col">
+        <h2 className="text-3xl font-bold mb-4">Select Background</h2>
+        <p className="text-gray-500 dark:text-gray-400 mb-6">
+          Choose a background for your avatar scene.
+        </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 py-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-6">
           {backgrounds.map((bg) => (
             <div
               key={bg.id}
               className={cn(
-                "relative rounded-lg overflow-hidden border-2 transition-all",
+                "relative rounded-lg overflow-hidden border-4 transition-all",
                 bg.owned
                   ? "cursor-pointer hover:shadow-lg"
                   : "cursor-not-allowed opacity-60 grayscale",
@@ -75,7 +73,7 @@ const Background: React.FC<BackgroundProps> = ({ onClose, onSelectBackground }) 
           ))}
         </div>
 
-        <div className="flex justify-between mt-6">
+        <div className="flex justify-between mt-auto pt-6">
           <button
             onClick={onClose}
             className="px-4 py-2 rounded-md border border-gray-300 bg-white hover:bg-gray-100"
@@ -85,7 +83,7 @@ const Background: React.FC<BackgroundProps> = ({ onClose, onSelectBackground }) 
           <button
             onClick={() => {
               if (selectedBackground) {
-                onSelectBackground(selectedBackground.src); // ✅ Pass to parent
+                onSelectBackground(selectedBackground.src);
                 onClose();
               }
             }}
