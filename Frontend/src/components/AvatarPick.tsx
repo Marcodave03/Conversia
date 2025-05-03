@@ -5,6 +5,8 @@ import Girl3 from "../assets/girl3.png";
 import Girl4 from "../assets/girl4.png";
 import Girl5 from "../assets/girl5.png";
 import Boy1 from "../assets/boy1.png";
+import { Button } from "../components/ui/button";
+import { X } from "lucide-react";
 
 interface Avatar {
   id: string;
@@ -67,7 +69,17 @@ const AvatarPick: React.FC<AvatarPickProps> = ({ onClose, onSelectAvatar, userId
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-auto">
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-[90%] max-w-4xl min-h-[700px] p-6 flex flex-col">
+        <div className="flex justify-between items-center mb-4">
         <h2 className="text-3xl font-bold mb-4">Pick Your Avatar</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="rounded-full"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
         <p className="text-gray-500 dark:text-gray-400 mb-6">
           Select from your owned avatars. Greyed-out avatars are not owned.
         </p>
@@ -100,13 +112,7 @@ const AvatarPick: React.FC<AvatarPickProps> = ({ onClose, onSelectAvatar, userId
           ))}
         </div>
 
-        <div className="flex justify-between mt-auto pt-6">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-md border border-gray-300 bg-white hover:bg-gray-100"
-          >
-            Cancel
-          </button>
+        <div className="flex justify-end mt-auto pt-6">
           <button
             onClick={() => {
               if (selectedAvatar) {
