@@ -2,6 +2,7 @@ import express from "express";
 import { CreateUser, GetUser, UpdateUser } from "../controller/UserController.js";
 import AvatarController from "../controller/AvatarController.js";
 import BackgroundController from "../controller/BackgroundController.js";
+import ChatHistoryController from "../controller/ChatHistoryController.js";
 
 const router = express.Router();
 
@@ -19,6 +20,9 @@ router.post("/users/:user_id/background", BackgroundController.createBackground)
 router.get("/background", BackgroundController.getAllBackgrounds);
 router.get("/users/:user_id/background", BackgroundController.getBackgroundsByUser);
 router.get("/background/:id", BackgroundController.getBackgroundById);
+
+router.get("/chat-history/:user_id/:model_id", ChatHistoryController.getHistory);
+router.post("/chat-history/:user_id/:model_id", ChatHistoryController.addMessage);
 
 
 export default router;

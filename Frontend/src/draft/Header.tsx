@@ -10,15 +10,14 @@ import { useNavigate } from "react-router-dom";
 type HeaderProps = {
   setModelUrl: (url: string) => void;
   setBackgroundUrl: (url: string) => void;
-  setModelId: (id: number) => void;
-  userId: number;
+  setModelId: (id: number) => void; // ✅ Add this line
 };
+
 
 const Header: React.FC<HeaderProps> = ({
   setModelUrl,
   setBackgroundUrl,
   setModelId,
-  userId,
 }) => {
   const [showProfile, setShowProfile] = useState(false);
   const [showBackground, setShowBackground] = useState(false);
@@ -102,17 +101,16 @@ const Header: React.FC<HeaderProps> = ({
         />
       )}
       {showAvatar && (
-        // <AvatarPick
-        //   userId={2}
-        //   onClose={() => setShowAvatar(false)}
-        //   onSelectAvatar={(modelUrl) => setModelUrl(modelUrl)}
-        // />
         <AvatarPick
-          userId={userId} // ✅ Use actual userId
+          userId={2}
           onClose={() => setShowAvatar(false)}
-          onSelectAvatar={(modelUrl, modelId) => {
+          onSelectAvatar={(modelUrl) => {
             setModelUrl(modelUrl);
-            setModelId(modelId);
+          
+            // extract modelId
+            const name = modelUrl.split("/").pop()?.replace(".glb", "");
+            const map = { girl1: 1, girl2: 2, girl3: 3, girl4: 4, girl5: 5, boy1: 6 };
+            setModelId(map[name as keyof typeof map] || 1);
           }}
         />
       )}

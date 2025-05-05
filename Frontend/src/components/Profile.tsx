@@ -1,242 +1,234 @@
-import type React from "react"
-import { useState } from "react"
-import { X, Camera, Mail, Phone, MapPin, Globe, Edit2, Save } from "lucide-react"
-import { Button } from "../components/ui/button"
-import { Input } from "../components/ui/input"
-import { Textarea } from "../components/ui/textarea"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
-import { Switch } from "../components/ui/switch"
-import { Label } from "../components/ui/label"
-import { Separator } from "../components/ui/separator"
+import React, { useState, useEffect } from "react";
+import { X, Copy, Edit2, Save } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../components/ui/tabs";
+import { useWallet, ConnectButton, addressEllipsis } from "@suiet/wallet-kit";
+import "@suiet/wallet-kit/style.css";
 
 interface ProfileProps {
-  onClose: () => void
+  onClose: () => void;
 }
 
 const Profile: React.FC<ProfileProps> = ({ onClose }) => {
-  const [editing, setEditing] = useState(false)
-  const [userData, setUserData] = useState({
-    name: "Alex Johnson",
-    email: "alex.johnson@example.com",
-    phone: "+1 (555) 123-4567",
-    location: "San Francisco, CA",
-    website: "alexjohnson.dev",
-    bio: "Senior software developer with 5+ years of experience in React, Node.js, and cloud technologies. Passionate about creating intuitive user experiences and scalable applications.",
-  })
+  const wallet = useWallet();
+  const [userId, setUserId] = useState<number | null>(null);
+  const [username, setUsername] = useState<string>("loading...");
+  const [editing, setEditing] = useState<boolean>(false);
+  const [newUsername, setNewUsername] = useState<string>("");
 
-  const handleEdit = () => {
-    setEditing(!editing)
-  }
+  // Fetch user_id and username once wallet is connected
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!wallet.account?.address) return;
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setUserData((prev) => ({ ...prev, [name]: value }))
-  }
+      try {
+        const res = await fetch("http://localhost:5555/api/conversia/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sui_id: wallet.account.address,
+            username: "anonymous",
+          }),
+        });
+
+        const data = await res.json();
+        if (data.user) {
+          setUserId(data.user.user_id);
+          setUsername(data.user.username || "anonymous");
+          setNewUsername(data.user.username || "");
+        }
+      } catch (err) {
+        console.error("Failed to fetch user:", err);
+      }
+    };
+
+    if (wallet.status === "connected") {
+      fetchUserData();
+    }
+  }, [wallet]);
+
+  const handleSaveUsername = async () => {
+    if (!userId) return;
+
+    try {
+      await fetch(`http://localhost:5555/api/conversia/users/${userId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: newUsername }),
+      });
+      setUsername(newUsername);
+      setEditing(false);
+    } catch (err) {
+      console.error("Failed to update username:", err);
+    }
+  };
+
+  const handleCopy = () => {
+    if (wallet.account?.address) {
+      navigator.clipboard.writeText(wallet.account.address);
+    }
+  };
 
   return (
-    <div className="space-y-6 min-h-[500px] fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4 overflow-auto">
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-auto">
-        {/* Header with close button */}
-        <div className="flex justify-between items-center p-6 border-b dark:border-gray-700">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Your Profile</h2>
-          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4 overflow-auto">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-[90%] max-w-4xl min-h-[700px] p-6">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Your Profile
+          </h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="rounded-full"
+          >
             <X className="h-5 w-5" />
           </Button>
         </div>
 
-        <div className="grid space-y-6 min-h-[1000px] md:grid-cols-[280px_1fr] h-full">
-          {/* Sidebar */}
-          <div className="border-r dark:border-gray-700 p-6 flex flex-col items-center">
-            <div className="relative mb-6 group">
-              <div className="w-32 h-32 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
-                <img src="/placeholder.svg?height=128&width=128" alt="Profile" className="w-full h-full object-cover" />
-              </div>
-              <div className="absolute bottom-0 right-0 bg-primary text-white p-2 rounded-full cursor-pointer shadow-lg">
-                <Camera className="h-4 w-4" />
-              </div>
-            </div>
+        {/* Tabs */}
+        <Tabs defaultValue="info" className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="info">Wallet Info</TabsTrigger>
+            <TabsTrigger value="history">Transaction History</TabsTrigger>
+            <TabsTrigger value="items">Owned Items</TabsTrigger>
+          </TabsList>
 
-            <h3 className="text-xl font-semibold text-center mb-1">{userData.name}</h3>
-            <p className="text-gray-500 dark:text-gray-400 text-sm text-center mb-6">Product Designer</p>
-
-            <div className="w-full space-y-4 mt-2">
-              <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-                <Mail className="h-4 w-4 text-gray-400" />
-                <span className="text-sm">{userData.email}</span>
-              </div>
-              <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-                <Phone className="h-4 w-4 text-gray-400" />
-                <span className="text-sm">{userData.phone}</span>
-              </div>
-              <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-                <MapPin className="h-4 w-4 text-gray-400" />
-                <span className="text-sm">{userData.location}</span>
-              </div>
-              <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300">
-                <Globe className="h-4 w-4 text-gray-400" />
-                <span className="text-sm">{userData.website}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Main content */}
-          <div className="p-6">
-            <Tabs defaultValue="profile" className="w-full">
-              <TabsList className="mb-6">
-                <TabsTrigger value="profile">Profile</TabsTrigger>
-                <TabsTrigger value="settings">Settings</TabsTrigger>
-                <TabsTrigger value="security">Security</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="profile" className="space-y-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-medium">Personal Information</h3>
-                  <Button variant="outline" size="sm" onClick={handleEdit} className="flex items-center gap-1">
-                    {editing ? (
-                      <>
-                        <Save className="h-4 w-4" />
-                        <span>Save</span>
-                      </>
-                    ) : (
-                      <>
-                        <Edit2 className="h-4 w-4" />
-                        <span>Edit</span>
-                      </>
-                    )}
-                  </Button>
+          {/* Wallet Info */}
+          <TabsContent value="info">
+            <div className="space-y-4 text-lg text-gray-800 dark:text-gray-200">
+              <div className="mb-6">
+                <div className="text-green-600 font-bold mb-2">
+                  <p className="text-start">Wallet Status: {wallet.status}</p>
                 </div>
+                <ConnectButton />
+              </div>
 
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
-                      {editing ? (
-                        <Input id="name" name="name" value={userData.name} onChange={handleChange} />
-                      ) : (
-                        <p className="text-gray-700 dark:text-gray-300 p-2">{userData.name}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      {editing ? (
-                        <Input id="email" name="email" type="email" value={userData.email} onChange={handleChange} />
-                      ) : (
-                        <p className="text-gray-700 dark:text-gray-300 p-2">{userData.email}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone</Label>
-                      {editing ? (
-                        <Input id="phone" name="phone" value={userData.phone} onChange={handleChange} />
-                      ) : (
-                        <p className="text-gray-700 dark:text-gray-300 p-2">{userData.phone}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="location">Location</Label>
-                      {editing ? (
-                        <Input id="location" name="location" value={userData.location} onChange={handleChange} />
-                      ) : (
-                        <p className="text-gray-700 dark:text-gray-300 p-2">{userData.location}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="website">Website</Label>
-                      {editing ? (
-                        <Input id="website" name="website" value={userData.website} onChange={handleChange} />
-                      ) : (
-                        <p className="text-gray-700 dark:text-gray-300 p-2">{userData.website}</p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
+              {wallet.status === "connected" && (
+                <>
+                  <div className="flex items-center justify-between">
+                    <span>
+                      <strong>Username:</strong>
+                    </span>
                     {editing ? (
-                      <Textarea id="bio" name="bio" value={userData.bio} onChange={handleChange} rows={4} />
-                    ) : (
-                      <p className="text-gray-700 dark:text-gray-300 p-2">{userData.bio}</p>
-                    )}
-                  </div>
-                </div>
-
-                <Separator className="my-6" />
-
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Skills</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {["React", "TypeScript", "Node.js", "UI/UX", "Tailwind CSS", "Next.js"].map((skill) => (
-                      <div key={skill} className="bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full text-sm">
-                        {skill}
+                      <div className="flex gap-2 items-center">
+                        <Input
+                          className="h-8 w-48"
+                          value={newUsername}
+                          onChange={(e) => setNewUsername(e.target.value)}
+                        />
+                        <Button size="sm" onClick={handleSaveUsername}>
+                          <Save className="w-4 h-4 mr-1" /> Save
+                        </Button>
                       </div>
-                    ))}
-                    {editing && (
-                      <Button variant="outline" size="sm" className="rounded-full">
-                        + Add Skill
-                      </Button>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span>{username}</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setEditing(true)}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     )}
                   </div>
-                </div>
-              </TabsContent>
 
-              <TabsContent value="settings" className="space-y-6">
-                <h3 className="text-lg font-medium mb-4">Preferences</h3>
-
-                <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Email Notifications</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Receive email about account activity</p>
+                    <span>
+                      <strong>Wallet Address:</strong>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span>{wallet.account?.address}</span>
+                      <Button size="icon" variant="ghost" onClick={handleCopy}>
+                        <Copy className="w-4 h-4" />
+                      </Button>
                     </div>
-                    <Switch id="email-notifications" defaultChecked />
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Dark Mode</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Toggle between light and dark theme</p>
+                    <span>
+                      <strong>Ellipsis Address:</strong>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span>
+                        {addressEllipsis(wallet.account?.address || "")}
+                      </span>
+                      <Button size="icon" variant="ghost" onClick={handleCopy}>
+                        <Copy className="w-4 h-4" />
+                      </Button>
                     </div>
-                    <Switch id="dark-mode" />
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">Two-Factor Authentication</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Add an extra layer of security</p>
+                    <span>
+                      <strong>Chain :</strong>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span>{wallet.chain?.name}</span>
+                      <Button size="icon" variant="ghost" onClick={handleCopy}>
+                        <Copy className="w-4 h-4" />
+                      </Button>
                     </div>
-                    <Switch id="two-factor" />
                   </div>
+                </>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* Transaction History (Dummy) */}
+          <TabsContent value="history">
+            <div className="space-y-4 text-gray-700 dark:text-gray-300">
+              <h3 className="text-xl font-semibold mb-2">
+                Recent Transactions
+              </h3>
+              <div className="space-y-3">
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm bg-white dark:bg-gray-800">
+                  <p className="font-medium">
+                    🧍‍♀️ Purchased Avatar{" "}
+                    <span className="text-blue-500 font-semibold">#3</span>
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    12 April 2025
+                  </p>
                 </div>
-              </TabsContent>
-
-              <TabsContent value="security" className="space-y-6">
-                <h3 className="text-lg font-medium mb-4">Security Settings</h3>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="current-password">Current Password</Label>
-                    <Input id="current-password" type="password" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="new-password">New Password</Label>
-                    <Input id="new-password" type="password" />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirm New Password</Label>
-                    <Input id="confirm-password" type="password" />
-                  </div>
-
-                  <Button className="mt-2">Update Password</Button>
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm bg-white dark:bg-gray-800">
+                  <p className="font-medium">
+                    🏠 Switched Background to{" "}
+                    <span className="text-purple-500 font-semibold">
+                      Garage
+                    </span>
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    10 April 2025
+                  </p>
                 </div>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Owned Items (Dummy) */}
+          <TabsContent value="items">
+            <div className="text-gray-700 dark:text-gray-300">
+              <p className="mb-2">Your Avatars & Backgrounds:</p>
+              <ul className="space-y-2 list-disc ml-5">
+                <li>Avatar Girl 2</li>
+                <li>Background: Conversia</li>
+              </ul>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Profile
+export default Profile;

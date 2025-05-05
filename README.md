@@ -52,3 +52,12 @@ export default tseslint.config({
   },
 })
 ```
+
+
+
+
+{
+  "sui_id": "0x123",
+  "avatarId": "avatar_knight",
+  "message": "Hi Maya, how are you?"
+}  sends from frontend
