@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Experience } from "./components/Experience";
 import Header from "./components/Header";
@@ -17,15 +17,86 @@ type InterviewProps = {
   interview_prompt: string | undefined;
 };
 
+type ChatHistoryItem = {
+  message: string;
+  sender: "user" | "system";
+};
+
 const App: React.FC<InterviewProps> = () => {
+  const wallet = useWallet();
+  const [modelId, setModelId] = useState<number>(1);
+  const [userId, setUserId] = useState<number>();
   const [currentExpression, setCurrentExpression] = useState<string | null>(
     null
   );
   const [modelUrl, setModelUrl] = useState<string>("/models/girl1.glb"); // default avatar
   const [backgroundUrl, setBackgroundUrl] = useState<string>(bgImage); // use default bg as fallback
-  const [userId, setUserId] = useState<number | null>(null);
-  const [modelId, setModelId] = useState<number>(1);
-  const wallet = useWallet();
+
+  // Hide intro after animation finishes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowIntro(false);
+    }, 3500); // typing duration + slide
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const ensureUserExists = async () => {
+      const walletAddress = wallet.account?.address;
+      if (!walletAddress) return;
+
+      try {
+        // Create or get user by wallet address
+        const res = await fetch("http://localhost:5555/api/conversia/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sui_id: walletAddress,
+            username: "anonymous", // or get username from somewhere else
+          }),
+        });
+
+        const data = await res.json();
+        if (data.user?.user_id) {
+          setUserId(data.user.user_id);
+        }
+      } catch (err) {
+        console.error("Failed to ensure user:", err);
+      }
+    };
+
+    if (wallet.status === "connected") {
+      ensureUserExists();
+    }
+  }, [wallet]);
+
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      if (!userId || !modelId) return;
+
+      try {
+        const res = await fetch(
+          `http://localhost:5555/api/conversia/chat-history/${userId}/${modelId}`
+        );
+        const data = await res.json();
+
+        const formatted = (data as ChatHistoryItem[]).map(
+          (msg): Message => ({
+            message: msg.message,
+            sender: msg.sender === "user" ? "Aku" : "Maya",
+            direction: msg.sender === "user" ? "outgoing" : "incoming",
+          })
+        );
+
+        setMessages(formatted);
+      } catch (error) {
+        console.error("Failed to load chat history:", error);
+      }
+    };
+
+    loadChatHistory();
+  }, [userId, modelId]);
 
   const [currentAnimation, setCurrentAnimation] = useState<string | null>(null);
   const [currentMouthCues, setCurrentMouthCues] = useState<MouthCue[]>([]);
@@ -42,53 +113,62 @@ const App: React.FC<InterviewProps> = () => {
   );
   const [loadingTranscription, setLoadingTranscription] = useState(false);
   const [showIntro, setShowIntro] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowIntro(false);
-    }, 3500); // typing duration + slide
-
-    return () => clearTimeout(timer);
-  }, []);
+  const bottomRef = useRef<HTMLDivElement | null>(null);
 
   const handleSend = async () => {
-    if (!userInput.trim() || !userId || !modelId) return;
+    if (!userInput.trim()) return;
 
-    const userMessage: Message = {
+    const newMessage: Message = {
       message: userInput,
       direction: "outgoing",
       sender: "Aku",
     };
 
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
+    const newMessages = [...messages, newMessage];
+
+    setMessages(newMessages);
     setUserInput("");
     setIsTyping(true);
 
-    // Save user message to backend
-    await fetch(
-      `http://localhost:5555/api/conversia/chat-history/${userId}/${modelId}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userInput, sender: "user" }),
-      }
-    );
+    // try {
+    //   await fetch(
+    //     `http://localhost:5555/api/conversia/chat-history/${userId}/${modelId}`,
+    //     {
+    //       method: "POST",
+    //       headers: {
+    //         "Content-Type": "application/json",
+    //       },
+    //       body: JSON.stringify({
+    //         message: userInput,
+    //         sender: "user",
+    //       }),
+    //     }
+    //   );
+    // } catch (error) {
+    //   console.error("Failed to save user message:", error);
+    // }
 
-    // Now ask GPT and let it update chat (response is saved inside processMessageToChatGPT)
-    await processMessageToChatGPT([...messages, userMessage]);
+    await processMessageToChatGPT(newMessages);
   };
 
   async function processMessageToChatGPT(chatMessages: Message[]) {
     try {
       const lastMessage = chatMessages[chatMessages.length - 1];
 
-      // Step 1: Call your backend to get Maya's response
-      const response = await fetch("http://localhost:5555/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: lastMessage.message }),
-      });
+      const response = await fetch(
+        `http://localhost:5555/api/conversia/chat-history/${userId}/${modelId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: lastMessage.message,
+            sender: "user",
+          }),
+        }
+      );
+      
 
       const data = await response.json();
       const fullText = data.message?.text || "Maya belum bicara ya...";
@@ -98,27 +178,16 @@ const App: React.FC<InterviewProps> = () => {
       const soundDuration = data.message?.lipsync?.metadata?.duration || 2;
       const audioUrl = "http://localhost:5555/audios/response.mp3";
 
-      // Step 2: Save system message to chat history
-      await fetch(
-        `http://localhost:5555/api/conversia/chat-history/${userId}/${modelId}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: fullText, sender: "system" }),
-        }
-      );
-
-      // Step 3: Set state for avatar response
-      setTypingText("");
+      setTypingText(""); // Clear any previous typing
       setCurrentExpression(facialExpression);
       setCurrentAnimation(animation);
       setCurrentMouthCues(mouthCues);
       setAudioDuration(soundDuration * 1000);
       setIsTyping(true);
 
-      // Step 4: Play voice audio (if enabled)
+      // Initialize audio
       let audio: HTMLAudioElement | null = null;
-      let audioDurationMs = 0;
+      let audioDuration = 0;
 
       if (isSpeechEnabled && audioUrl) {
         try {
@@ -132,15 +201,15 @@ const App: React.FC<InterviewProps> = () => {
           audio.onended = () => setIsSpeaking(false);
           await audio.play();
 
-          audioDurationMs = audio.duration * 1000 || 2000;
+          audioDuration = audio.duration * 1000 || 2000;
         } catch (err) {
           console.error("Error fetching or playing audio:", err);
         }
       }
 
-      // Step 5: Animate typing effect based on audio duration
-      const duration = audioDurationMs || fullText.length * 50;
+      const duration = audioDuration || fullText.length * 50;
       const interval = duration / fullText.length;
+
       let index = 0;
       let lastTime = performance.now();
 
@@ -154,16 +223,32 @@ const App: React.FC<InterviewProps> = () => {
         if (index < fullText.length) {
           requestAnimationFrame(typeChar);
         } else {
-          setMessages((prev) => [
-            ...prev,
-            {
-              message: fullText,
-              sender: "Maya",
-              direction: "incoming",
-            },
-          ]);
+          const aiMessage: Message = {
+            message: fullText,
+            sender: "Maya",
+            direction: "incoming",
+          };
+
+          setMessages((prev) => [...prev, aiMessage]);
           setTypingText("");
           setIsTyping(false);
+
+          // 🔧 Save message to backend (no await here)
+          // fetch(
+          //   `http://localhost:5555/api/conversia/chat-history/${userId}/${modelId}`,
+          //   {
+          //     method: "POST",
+          //     headers: {
+          //       "Content-Type": "application/json",
+          //     },
+          //     body: JSON.stringify({
+          //       message: fullText,
+          //       sender: "system",
+          //     }),
+          //   }
+          // ).catch((error) =>
+          //   console.error("Failed to save system message:", error)
+          // );
         }
       };
 
@@ -237,39 +322,9 @@ const App: React.FC<InterviewProps> = () => {
   };
 
   useEffect(() => {
-    const fetchUserId = async () => {
-      const walletAddress = wallet.account?.address;
-      if (!walletAddress) return;
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, typingText]);
 
-      const res = await fetch(
-        `http://localhost:5555/api/conversia/users/${walletAddress}`
-      );
-      const user = await res.json();
-      setUserId(user.user_id);
-    };
-    if (wallet.status === "connected") fetchUserId();
-  }, [wallet]);
-
-  useEffect(() => {
-    if (!userId || !modelId) return;
-    const fetchHistory = async () => {
-      const res = await fetch(
-        `http://localhost:5555/api/conversia/chat-history/${userId}/${modelId}`
-      );
-      const data = await res.json();
-      type ChatMessage = {
-        message: string;
-        sender: string;
-      };
-      const formatted = data.map((msg: ChatMessage) => ({
-        message: msg.message,
-        sender: msg.sender === "user" ? "" : "",
-        direction: msg.sender === "user" ? "outgoing" : "incoming",
-      }));
-      setMessages(formatted);
-    };
-    fetchHistory();
-  }, [userId, modelId]);
 
   return (
     <>
@@ -301,16 +356,18 @@ const App: React.FC<InterviewProps> = () => {
         <Header
           setModelUrl={setModelUrl}
           setBackgroundUrl={setBackgroundUrl}
-          setModelId={setModelId} // ✅ Now passed correctly
+          setModelId={setModelId}
+          userId={userId} 
         />
-
         <div className="flex-1 flex">
           <div className="w-full h-full relative">
             {/* Chat messages */}
             <div
-              className="h-[70vh] max-h-[70vh] overflow-y-auto space-y-4 p-4 absolute top-[10%] left-[55%] w-[43%] z-30"
+              className="h-[80vh] overflow-y-auto scrollbar-none  space-y-4 p-4 absolute top-[10%] left-[55%] w-[43%] z-30"
               style={{
                 position: "relative",
+                scrollbarWidth: "thin",        
+                scrollbarColor: "#FFFFFFFF transparent" 
               }}
             >
               <div className="fixed top-0 left-0 w-full h-32 bg-gradient-to-b from-[#000000]/30 to-transparent z-40 pointer-events-none"></div>
@@ -343,12 +400,12 @@ const App: React.FC<InterviewProps> = () => {
                   </div>
                 </div>
               )}
-              
               {loadingTranscription && (
                 <div className="flex justify-center py-4">
                   <div className="w-8 h-8 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
                 </div>
               )}
+              <div ref={bottomRef} />
             </div>
 
             {/* Avatar (with lower z-index) */}
@@ -379,9 +436,8 @@ const App: React.FC<InterviewProps> = () => {
             onChange={(e) => setUserInput(e.target.value)}
             placeholder="Start typing ..."
             className="border-none bg-transparent w-full text-white placeholder-white placeholder-opacity-70 text-2xl focus:outline-none px-4 py-2"
-            onKeyDown={(e) => {
+            onKeyPress={(e) => {
               if (e.key === "Enter") {
-                e.preventDefault(); // optional, blocks form submission if wrapped in form
                 handleSend();
               }
             }}

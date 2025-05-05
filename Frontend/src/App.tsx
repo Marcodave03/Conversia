@@ -130,24 +130,6 @@ const App: React.FC<InterviewProps> = () => {
     setUserInput("");
     setIsTyping(true);
 
-    try {
-      await fetch(
-        `http://localhost:5555/api/conversia/chat-history/${userId}/${modelId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            message: userInput,
-            sender: "user",
-          }),
-        }
-      );
-    } catch (error) {
-      console.error("Failed to save user message:", error);
-    }
-
     await processMessageToChatGPT(newMessages);
   };
 
@@ -155,51 +137,63 @@ const App: React.FC<InterviewProps> = () => {
     try {
       const lastMessage = chatMessages[chatMessages.length - 1];
 
-      const response = await fetch("http://localhost:5555/chat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ message: lastMessage.message }),
-      });
+      const response = await fetch(
+        `http://localhost:5555/api/conversia/chat-history/${userId}/${modelId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            message: lastMessage.message,
+            sender: "user",
+          }),
+        }
+      );
 
       const data = await response.json();
-      const fullText = data.message?.text || "Maya belum bicara ya...";
-      const facialExpression = data.message?.facialExpression || null;
-      const animation = data.message?.animation || null;
-      const mouthCues = data.message?.lipsync?.mouthCues || [];
-      const soundDuration = data.message?.lipsync?.metadata?.duration || 2;
+      const fullText = data.system?.message || "Maya belum bicara ya...";
+      const soundDuration = data.system?.lipsync?.metadata?.duration || 2;
+      const mouthCues = data.system?.lipsync?.mouthCues || [];
+      const facialExpression = data.system?.facialExpression || "default";
+      const animation = data.system?.animation || "Idle";
       const audioUrl = "http://localhost:5555/audios/response.mp3";
 
-      setTypingText(""); // Clear any previous typing
+      setTypingText("");
       setCurrentExpression(facialExpression);
       setCurrentAnimation(animation);
       setCurrentMouthCues(mouthCues);
       setAudioDuration(soundDuration * 1000);
       setIsTyping(true);
 
-      // Initialize audio
-      let audio: HTMLAudioElement | null = null;
+      // Play audio if enabled
       let audioDuration = 0;
-
       if (isSpeechEnabled && audioUrl) {
         try {
           const freshAudioUrl = `${audioUrl}?t=${new Date().getTime()}`;
           const audioResponse = await fetch(freshAudioUrl);
           const audioBlob = await audioResponse.blob();
           const audioObjectUrl = URL.createObjectURL(audioBlob);
+          const audio = new Audio(audioObjectUrl);
 
-          audio = new Audio(audioObjectUrl);
           audio.onplay = () => setIsSpeaking(true);
           audio.onended = () => setIsSpeaking(false);
-          await audio.play();
 
+          await new Promise((resolve) => {
+            audio.onloadedmetadata = () => {
+              const safeDuration = audio.duration * 1000;
+              setAudioDuration(safeDuration);
+              resolve(audio.play());
+            };
+          });
+          await audio.play();
           audioDuration = audio.duration * 1000 || 2000;
         } catch (err) {
-          console.error("Error fetching or playing audio:", err);
+          console.error("Error playing audio:", err);
         }
       }
 
+      // Typing effect
       const duration = audioDuration || fullText.length * 50;
       const interval = duration / fullText.length;
 
@@ -221,27 +215,9 @@ const App: React.FC<InterviewProps> = () => {
             sender: "Maya",
             direction: "incoming",
           };
-
           setMessages((prev) => [...prev, aiMessage]);
           setTypingText("");
           setIsTyping(false);
-
-          // 🔧 Save message to backend (no await here)
-          fetch(
-            `http://localhost:5555/api/conversia/chat-history/${userId}/${modelId}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                message: fullText,
-                sender: "system",
-              }),
-            }
-          ).catch((error) =>
-            console.error("Failed to save system message:", error)
-          );
         }
       };
 
@@ -318,7 +294,6 @@ const App: React.FC<InterviewProps> = () => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typingText]);
 
-
   return (
     <>
       <AnimatePresence>
@@ -350,7 +325,7 @@ const App: React.FC<InterviewProps> = () => {
           setModelUrl={setModelUrl}
           setBackgroundUrl={setBackgroundUrl}
           setModelId={setModelId}
-          userId={userId} 
+          userId={userId}
         />
         <div className="flex-1 flex">
           <div className="w-full h-full relative">
@@ -359,8 +334,8 @@ const App: React.FC<InterviewProps> = () => {
               className="h-[80vh] overflow-y-auto scrollbar-none  space-y-4 p-4 absolute top-[10%] left-[55%] w-[43%] z-30"
               style={{
                 position: "relative",
-                scrollbarWidth: "thin",        
-                scrollbarColor: "#FFFFFFFF transparent" 
+                scrollbarWidth: "thin",
+                scrollbarColor: "#FFFFFFFF transparent",
               }}
             >
               <div className="fixed top-0 left-0 w-full h-32 bg-gradient-to-b from-[#000000]/30 to-transparent z-40 pointer-events-none"></div>

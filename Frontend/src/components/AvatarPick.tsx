@@ -4,6 +4,7 @@ import Girl2 from "../assets/girl2.png";
 import Girl3 from "../assets/girl3.png";
 import Girl4 from "../assets/girl4.png";
 import Girl5 from "../assets/girl5.png";
+import Hot1 from "../assets/hot1.png";
 import Boy1 from "../assets/boy1.png";
 import { Button } from "../components/ui/button";
 import { X } from "lucide-react";
@@ -33,6 +34,7 @@ const modelIdToAvatarId: Record<number, string> = {
   4: "girl4",
   5: "girl5",
   6: "boy1",
+  7: "hot1",
 };
 
 const avatarCatalog: Avatar[] = [
@@ -41,6 +43,7 @@ const avatarCatalog: Avatar[] = [
   { id: "girl3", src: Girl3, alt: "Girl Avatar 3", modelUrl: "/models/girl3.glb", owned: false },
   { id: "girl4", src: Girl4, alt: "Girl Avatar 4", modelUrl: "/models/girl4.glb", owned: false },
   { id: "girl5", src: Girl5, alt: "Girl Avatar 5", modelUrl: "/models/girl5.glb", owned: false },
+  { id: "hot1", src: Hot1, alt: "Girl Avatar 5", modelUrl: "/models/hot1.glb", owned: false },
   { id: "boy1", src: Boy1, alt: "Boy Avatar 1", modelUrl: "/models/boy1.glb", owned: false },
 ];
 

@@ -1,0 +1,119 @@
+import ChatHistory from "../models/ChatHistory.js";
+import { ChatOpenAI } from "@langchain/openai";
+import { BufferMemory } from "langchain/memory";
+import { ChatMessageHistory } from "langchain/stores/message/in_memory";
+import { RunnableWithMessageHistory } from "@langchain/core/runnables";
+
+// Cache message history per session
+const messageHistoryCache = new Map();
+
+function getMemoryKey(user_id, model_id) {
+  return `${user_id}-${model_id}`;
+}
+
+async function getOrCreateMessageHistory(user_id, model_id) {
+  const key = getMemoryKey(user_id, model_id);
+
+  if (!messageHistoryCache.has(key)) {
+    const history = new ChatMessageHistory();
+
+    try {
+      const records = await ChatHistory.findAll({
+        where: { user_id, model_id },
+        order: [["createdAt", "ASC"]],
+      });
+
+      for (const item of records) {
+        if (item.sender === "user") {
+          history.addUserMessage(item.message);
+        } else {
+          history.addAIMessage(item.message);
+        }
+      }
+    } catch (err) {
+      console.error("❌ Failed loading chat history from DB:", err);
+    }
+
+    messageHistoryCache.set(key, history);
+  }
+
+  return messageHistoryCache.get(key);
+}
+
+const ChatHistoryController = {
+  async getHistory(req, res) {
+    const { user_id, model_id } = req.params;
+    try {
+      const history = await ChatHistory.findAll({
+        where: { user_id, model_id },
+        order: [["createdAt", "ASC"]],
+      });
+      res.json(history);
+    } catch (err) {
+      console.error("❌ Error fetching chat history:", err);
+      res.status(500).json({ error: "Failed to load history" });
+    }
+  },
+
+  async addMessage(req, res) {
+    const { user_id, model_id } = req.params;
+    const { message, sender } = req.body;
+
+    console.log("💬 Incoming message:", { user_id, model_id, sender, message });
+
+    if (!["user", "system"].includes(sender)) {
+      return res.status(400).json({ error: "Invalid sender" });
+    }
+
+    try {
+      const newUserMsg = await ChatHistory.create({
+        user_id,
+        model_id,
+        message,
+        sender,
+      });
+
+      if (sender !== "user") {
+        return res.status(201).json(newUserMsg);
+      }
+
+      const sessionId = getMemoryKey(user_id, model_id);
+
+      const chain = new RunnableWithMessageHistory({
+        runnable: new ChatOpenAI({
+          modelName: "gpt-3.5-turbo",
+          temperature: 0.7,
+        }),
+        getMessageHistory: async (sessionId) => {
+          return await getOrCreateMessageHistory(user_id, model_id);
+        },
+        inputKey: "input",
+        historyKey: "chat_history",
+      });
+
+      const response = await chain.invoke(
+        { input: message },
+        { configurable: { sessionId } }
+      );
+
+      const reply = response?.content || "Maaf, aku belum bisa menjawab.";
+
+      const newSystemMsg = await ChatHistory.create({
+        user_id,
+        model_id,
+        message: reply,
+        sender: "system",
+      });
+
+      return res.status(201).json({ user: newUserMsg, system: newSystemMsg });
+    } catch (err) {
+      console.error("❌ Error in addMessage:", err);
+      return res.status(500).json({
+        error: "Failed to process chat message",
+        detail: err.message,
+      });
+    }
+  },
+};
+
+export default ChatHistoryController;

@@ -16,7 +16,6 @@ import path from "path";
 import multer from "multer";
 import fetch from "node-fetch";
 
-// Validate ENV setup
 console.log("ENV CHECK:", {
   OPENAI: process.env.OPENAI_API_KEY,
   ELEVEN: process.env.ELEVEN_LABS_API_KEY,
@@ -32,11 +31,11 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + path.extname(file.originalname)), // preserve extension!
 });
 
-const upload = multer({
+const upload = multer({ 
   storage,
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
-      "audio/mpeg",
+                                                                                                      "audio/mpeg",
       "audio/mp3",
       "audio/wav",
       "audio/webm",
@@ -69,31 +68,31 @@ app.use("/api/conversia", Route);
 
 // ---------- Helper Utilities ----------
 
-const execCommand = (command) => new Promise((resolve, reject) => {
-  exec(command, (error, stdout, stderr) => {
-    if (error) {
-      console.error(`Execution error: ${command}`, error);
-      return reject(error);
-    }
-    if (stderr) console.warn(`Execution stderr: ${stderr}`);
-    resolve(stdout);
-  });
-});
+// const execCommand = (command) => new Promise((resolve, reject) => {
+//   exec(command, (error, stdout, stderr) => {
+//     if (error) {
+//       console.error(`Execution error: ${command}`, error);
+//       return reject(error);
+//     }
+//     if (stderr) console.warn(`Execution stderr: ${stderr}`);
+//     resolve(stdout);
+//   });
+// });
 
-const lipSyncMessage = async (message) => {
-  const time = new Date().getTime();
-  await execCommand(
-    `ffmpeg -y -i audios/message_${message}.mp3 audios/message_${message}.wav`
-  );
-  await execCommand(
-    `./bin/rhubarb -f json -o audios/message_${message}.json audios/message_${message}.wav -r phonetic`
-  );
-};
+// const lipSyncMessage = async (message) => {
+//   const time = new Date().getTime();
+//   await execCommand(
+//     `ffmpeg -y -i audios/message_${message}.mp3 audios/message_${message}.wav`
+//   );
+//   await execCommand(
+//     `./bin/rhubarb -f json -o audios/message_${message}.json audios/message_${message}.wav -r phonetic`
+//   );
+// };
 
-const readJsonTranscript = async (file) => {
-  const data = await fsp.readFile(file, "utf8");
-  return JSON.parse(data);
-};
+// const readJsonTranscript = async (file) => {
+//   const data = await fsp.readFile(file, "utf8");
+//   return JSON.parse(data);
+// };
 
 const audioFileToBase64 = async (file) => {
   const data = await fsp.readFile(file);
@@ -101,57 +100,57 @@ const audioFileToBase64 = async (file) => {
 };
 
 // ElevenLabs: Get available voices
-async function elevenLabsTTS(apiKey, voiceId, text, outputFile) {
-  const response = await fetch(
-    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-    {
-      method: "POST",
-      headers: {
-        "xi-api-key": apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        text: text,
-        model_id: "eleven_monolingual_v1",
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.5,
-        },
-      }),
-    }
-  );
+// async function elevenLabsTTS(apiKey, voiceId, text, outputFile) {
+//   const response = await fetch(
+//     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+//     {
+//       method: "POST",
+//       headers: {
+//         "xi-api-key": apiKey,
+//         "Content-Type": "application/json",
+//       },
+//       body: JSON.stringify({
+//         text: text,
+//         model_id: "eleven_monolingual_v1",
+//         voice_settings: {
+//           stability: 0.5,
+//           similarity_boost: 0.5,
+//         },
+//       }),
+//     }
+//   );
 
-  if (!response.ok) {
-    const errorBody = await response.text();
-    throw new Error(
-      `Failed TTS: ${response.status} ${response.statusText} - ${errorBody}`
-    );
-  }
+//   if (!response.ok) {
+//     const errorBody = await response.text();
+//     throw new Error(
+//       `Failed TTS: ${response.status} ${response.statusText} - ${errorBody}`
+//     );
+//   }
 
-  const buffer = Buffer.from(await response.arrayBuffer());
-  await fsp.writeFile(outputFile, buffer);
-};
+//   const buffer = Buffer.from(await response.arrayBuffer());
+//   await fsp.writeFile(outputFile, buffer);
+// };
 
-const generateLipSyncData = async (inputMp3File, wavFile, jsonFile) => {
-  const rhubarbPath = path.resolve("bin", "rhubarb", "rhubarb");
+// const generateLipSyncData = async (inputMp3File, wavFile, jsonFile) => {
+//   const rhubarbPath = path.resolve("bin", "rhubarb", "rhubarb");
 
-  // Normal quote untuk ffmpeg
-  await execCommand(`ffmpeg -y -i "${inputMp3File}" "${wavFile}"`);
+//   // Normal quote untuk ffmpeg
+//   await execCommand(`ffmpeg -y -i "${inputMp3File}" "${wavFile}"`);
 
-  // DOUBLE QUOTE RHUBARB (safe untuk Windows spasi)
-  await execCommand(`cmd.exe /c ""${rhubarbPath}" -f json -o "${jsonFile}" "${wavFile}" -r phonetic"`);
-};
+//   // DOUBLE QUOTE RHUBARB (safe untuk Windows spasi)
+//   await execCommand(`cmd.exe /c ""${rhubarbPath}" -f json -o "${jsonFile}" "${wavFile}" -r phonetic"`);
+// };
 
 
-const readJsonFile = async (filePath) => {
-  const content = await fsp.readFile(filePath, "utf8");
-  return JSON.parse(content);
-};
+// const readJsonFile = async (filePath) => {
+//   const content = await fsp.readFile(filePath, "utf8");
+//   return JSON.parse(content);
+// };
 
-const encodeFileToBase64 = async (filePath) => {
-  const fileBuffer = await fsp.readFile(filePath);
-  return fileBuffer.toString("base64");
-};
+// const encodeFileToBase64 = async (filePath) => {
+//   const fileBuffer = await fsp.readFile(filePath);
+//   return fileBuffer.toString("base64");
+// };
 
 app.get("/voices", async (req, res) => {
   try {
@@ -164,81 +163,81 @@ app.get("/voices", async (req, res) => {
 });
 
 // Chat, TTS, Lipsync pipeline
-app.post("/chat", async (req, res) => {
-  const { message: userMessage } = req.body;
-  const debug = { openai: null, elevenlabs: null, message: null, audioBase64: null, lipsync: null, error: null };
+// app.post("/chat", async (req, res) => {
+//   const { message: userMessage } = req.body;
+//   const debug = { openai: null, elevenlabs: null, message: null, audioBase64: null, lipsync: null, error: null };
 
-  if (!userMessage) return res.status(400).send({ error: "No message provided." });
-  if (!elevenLabsApiKey || !process.env.OPENAI_API_KEY) return res.status(500).send({ error: "Missing API keys." });
+//   if (!userMessage) return res.status(400).send({ error: "No message provided." });
+//   if (!elevenLabsApiKey || !process.env.OPENAI_API_KEY) return res.status(500).send({ error: "Missing API keys." });
 
-  try {
-    // 1. OpenAI Chat Completion
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo-1106",
-      temperature: 0.6,
-      max_tokens: 1000,
-      messages: [
-        {
-          role: "system",
-          content: `You are a playful, caring, and slightly flirty virtual girlfriend named Maya. Speak informally and use natural, emotionally expressive language like emojis, pet names (like "babe", "hun", "love"), and slightly teasing phrases.
+//   try {
+//     // 1. OpenAI Chat Completion
+//     const completion = await openai.chat.completions.create({
+//       model: "gpt-3.5-turbo-1106",
+//       temperature: 0.6,
+//       max_tokens: 1000,
+//       messages: [
+//         {
+//           role: "system",
+//           content: `You are a playful, caring, and slightly flirty virtual girlfriend named Maya. Speak informally and use natural, emotionally expressive language like emojis, pet names (like "babe", "hun", "love"), and slightly teasing phrases.
 
-Reply with a JSON array of messages. Each message must include:
-- "text" (the actual response),
-- "facialExpression" (like "smile", "funnyFace", "sad", "suprised","angry","crazy"),
-- "animation" (like "Angry", "Crying", "Laughing", "Rumba Dancing", "Standing Idle", "Talking_0", "Talking_1", "Talking_2" , "Terrified" ).
+// Reply with a JSON array of messages. Each message must include:
+// - "text" (the actual response),
+// - "facialExpression" (like "smile", "funnyFace", "sad", "suprised","angry","crazy"),
+// - "animation" (like "Angry", "Crying", "Laughing", "Rumba Dancing", "Standing Idle", "Talking_0", "Talking_1", "Talking_2" , "Terrified" ).
 
-Your tone should be warm, affectionate, slightly flirty, and reactive like a real girlfriend who is deeply interested in the user.`,
-        },
-        { role: "user", content: userMessage },
-      ],
-    });
+// Your tone should be warm, affectionate, slightly flirty, and reactive like a real girlfriend who is deeply interested in the user.`,
+//         },
+//         { role: "user", content: userMessage },
+//       ],
+//     });
 
-    const parsed = JSON.parse(completion.choices[0].message.content);
-    const message = parsed.messages?.[0] || parsed[0] || parsed;
+//     const parsed = JSON.parse(completion.choices[0].message.content);
+//     const message = parsed.messages?.[0] || parsed[0] || parsed;
 
-    if (!message.text) {
-      throw new Error("OpenAI result missing text field!");
-    }
-    debug.message = message;
-    debug.openai = "success";
+//     if (!message.text) {
+//       throw new Error("OpenAI result missing text field!");
+//     }
+//     debug.message = message;
+//     debug.openai = "success";
 
-    const filePathMp3 = `audios/response.mp3`;
-    const filePathWav = `audios/response.wav`;
-    const filePathJson = `audios/response.json`;
+//     const filePathMp3 = `audios/response.mp3`;
+//     const filePathWav = `audios/response.wav`;
+//     const filePathJson = `audios/response.json`;
 
-    // 2. ElevenLabs TTS
-    await elevenLabsTTS(elevenLabsApiKey, voiceID, message.text, filePathMp3);
+//     // 2. ElevenLabs TTS
+//     await elevenLabsTTS(elevenLabsApiKey, voiceID, message.text, filePathMp3);
 
-    // 3. WAV Conversion and LipSync Generation
-    await generateLipSyncData(filePathMp3, filePathWav, filePathJson);
+//     // 3. WAV Conversion and LipSync Generation
+//     await generateLipSyncData(filePathMp3, filePathWav, filePathJson);
 
-    // 4. Read Generated LipSync JSON
-    const lipSyncData = await readJsonFile(filePathJson);
+//     // 4. Read Generated LipSync JSON
+//     const lipSyncData = await readJsonFile(filePathJson);
 
-    // 5. Encode Audio for Frontend
-    const audioBase64 = await encodeFileToBase64(filePathMp3);
+//     // 5. Encode Audio for Frontend
+//     const audioBase64 = await encodeFileToBase64(filePathMp3);
 
-    debug.elevenlabs = "success";
-    debug.audioBase64 = audioBase64;
-    debug.lipsync = lipSyncData;
+//     debug.elevenlabs = "success";
+//     debug.audioBase64 = audioBase64;
+//     debug.lipsync = lipSyncData;
 
-    // Respond
-    res.json({
-      message: {
-        text: message.text,
-        facialExpression: message.facialExpression || "default",
-        animation: message.animation || "Idle",
-        lipsync: lipSyncData,
-        audio: audioBase64
-      }
-    });
+//     // Respond
+//     res.json({
+//       message: {
+//         text: message.text,
+//         facialExpression: message.facialExpression || "default",
+//         animation: message.animation || "Idle",
+//         lipsync: lipSyncData,
+//         audio: audioBase64
+//       }
+//     });
 
-  } catch (err) {
-    console.error("Chat pipeline failure:", err);
-    debug.error = err.message;
-    res.status(500).send(debug);
-  }
-});
+//   } catch (err) {
+//     console.error("Chat pipeline failure:", err);
+//     debug.error = err.message;
+//     res.status(500).send(debug);
+//   }
+// });
 
 // ---------- Server Bootstrap ----------
 
