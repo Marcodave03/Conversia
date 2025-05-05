@@ -1,0 +1,9 @@
+[package]
+name = "ConversiaAvatarNFT"
+version = "0.0.1"
+published-at = "0x0"
+
+[addresses]
+Conversia = "0x0"
+
+[dependencies]
