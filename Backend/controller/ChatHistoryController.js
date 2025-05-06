@@ -370,87 +370,194 @@ const ChatHistoryController = {
 
   
 
+  // async transcribeAndReply(req, res) {
+  //   const { user_id, model_id } = req.params;
+  //   const file = req.file;
+  //   if (!file) return res.status(400).json({ error: "No audio file uploaded" });
+
+  //   try {
+  //     const transcript = await openai.audio.transcriptions.create({
+  //       file: fsSync.createReadStream(file.path),
+  //       model: "whisper-1",
+  //       language: "en",
+  //     });
+
+  //     const userMsg = await ChatHistory.create({
+  //       user_id,
+  //       model_id,
+  //       message: transcript.text,
+  //       sender: "user",
+  //     });
+
+  //     const sessionId = getMemoryKey(user_id, model_id);
+  //     const chain = new RunnableWithMessageHistory({
+  //       runnable: new ChatOpenAI({
+  //         modelName: "gpt-3.5-turbo",
+  //         temperature: 0.7,
+  //       }),
+  //       getMessageHistory: async () =>
+  //         await getOrCreateMessageHistory(user_id, model_id),
+  //       inputKey: "input",
+  //       historyKey: "chat_history",
+  //     });
+
+  //     const langResp = await chain.invoke(
+  //       { input: transcript.text },
+  //       { configurable: { sessionId } }
+  //     );
+  //     const aiText = langResp?.content || "Maaf, aku belum bisa menjawab.";
+
+  //     const mp3 = `audios/response.mp3`;
+  //     const wav = `audios/response.wav`;
+  //     const json = `audios/response.json`;
+
+  //     await elevenLabsTTS(
+  //       process.env.ELEVEN_LABS_API_KEY,
+  //       voiceID,
+  //       aiText,
+  //       mp3
+  //     );
+  //     await generateLipSyncData(mp3, wav, json);
+
+  //     const lipsync = await readJsonFile(json);
+  //     const audioBase64 = (await fs.readFile(mp3)).toString("base64");
+
+  //     const systemMsg = await ChatHistory.create({
+  //       user_id,
+  //       model_id,
+  //       message: aiText,
+  //       sender: "system",
+  //     });
+
+  //     res.status(201).json({
+  //       user: userMsg,
+  //       system: {
+  //         ...systemMsg.toJSON(),
+  //         facialExpression: "smile",
+  //         animation: "Talking_1",
+  //         lipsync,
+  //         audio: audioBase64,
+  //       },
+  //     });
+  //   } catch (err) {
+  //     console.error("❌ transcribeAndReply error:", err);
+  //     res
+  //       .status(500)
+  //       .json({
+  //         error: "Speech-to-text processing failed",
+  //         detail: err.message,
+  //       });
+  //   } finally {
+  //     fs.unlink(file.path).catch(() => {});
+  //   }
+  // },
+
   async transcribeAndReply(req, res) {
     const { user_id, model_id } = req.params;
     const file = req.file;
     if (!file) return res.status(400).json({ error: "No audio file uploaded" });
-
+  
     try {
+      // 1. Transcribe voice input
       const transcript = await openai.audio.transcriptions.create({
         file: fsSync.createReadStream(file.path),
         model: "whisper-1",
         language: "en",
       });
-
+  
+      const userText = transcript.text;
+  
       const userMsg = await ChatHistory.create({
         user_id,
         model_id,
-        message: transcript.text,
+        message: userText,
         sender: "user",
       });
-
+  
       const sessionId = getMemoryKey(user_id, model_id);
+  
+      // 2. LangChain with memory + function call schema
+      const chat = new ChatOpenAI({
+        modelName: "gpt-4-0613",
+        temperature: 0.7,
+      });
+  
       const chain = new RunnableWithMessageHistory({
-        runnable: new ChatOpenAI({
-          modelName: "gpt-3.5-turbo",
-          temperature: 0.7,
+        runnable: chat.bind({
+          functions: [convertToOpenAIFunction(girlfriendFunction)],
+          function_call: { name: "respond_as_maya" },
         }),
         getMessageHistory: async () =>
           await getOrCreateMessageHistory(user_id, model_id),
         inputKey: "input",
         historyKey: "chat_history",
       });
-
-      const langResp = await chain.invoke(
-        { input: transcript.text },
+  
+      const langResponse = await chain.invoke(
+        { input: userText },
         { configurable: { sessionId } }
       );
-      const aiText = langResp?.content || "Maaf, aku belum bisa menjawab.";
-
-      const mp3 = `audios/response.mp3`;
-      const wav = `audios/response.wav`;
-      const json = `audios/response.json`;
-
-      await elevenLabsTTS(
-        process.env.ELEVEN_LABS_API_KEY,
-        voiceID,
-        aiText,
-        mp3
-      );
-      await generateLipSyncData(mp3, wav, json);
-
-      const lipsync = await readJsonFile(json);
-      const audioBase64 = (await fs.readFile(mp3)).toString("base64");
-
+  
+      let aiText = "Maaf, aku belum bisa menjawab.";
+      let facialExpression = "neutral";
+      let animation = "Idle";
+  
+      try {
+        const args = JSON.parse(
+          langResponse.additional_kwargs?.function_call?.arguments || "{}"
+        );
+        aiText = args.text ?? aiText;
+        facialExpression = args.facialExpression ?? facialExpression;
+        animation = args.animation ?? animation;
+      } catch (err) {
+        console.warn("⚠️ Failed to parse function_call arguments:", err.message);
+      }
+  
+      // 3. Generate voice and lipsync
+      const audioFile = `audios/response.mp3`;
+      const wavFile = `audios/response.wav`;
+      const jsonFile = `audios/response.json`;
+  
+      let lipsync = null;
+      let audioBase64 = null;
+  
+      try {
+        await elevenLabsTTS(process.env.ELEVEN_LABS_API_KEY, voiceID, aiText, audioFile);
+        await generateLipSyncData(audioFile, wavFile, jsonFile);
+        lipsync = await readJsonFile(jsonFile);
+        audioBase64 = (await fs.readFile(audioFile)).toString("base64");
+      } catch (err) {
+        console.warn("⚠️ ElevenLabs or lipsync failed:", err.message);
+      }
+  
       const systemMsg = await ChatHistory.create({
         user_id,
         model_id,
         message: aiText,
         sender: "system",
       });
-
+  
       res.status(201).json({
         user: userMsg,
         system: {
           ...systemMsg.toJSON(),
-          facialExpression: "smile",
-          animation: "Talking_1",
+          facialExpression,
+          animation,
           lipsync,
           audio: audioBase64,
         },
       });
     } catch (err) {
       console.error("❌ transcribeAndReply error:", err);
-      res
-        .status(500)
-        .json({
-          error: "Speech-to-text processing failed",
-          detail: err.message,
-        });
+      res.status(500).json({
+        error: "Speech-to-text processing failed",
+        detail: err.message,
+      });
     } finally {
       fs.unlink(file.path).catch(() => {});
     }
   },
+  
 
 };
 
