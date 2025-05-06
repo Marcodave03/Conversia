@@ -5,6 +5,8 @@ import { OpenAI } from "openai";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatMessageHistory } from "langchain/stores/message/in_memory";
 import { RunnableWithMessageHistory } from "@langchain/core/runnables";
+import { convertToOpenAIFunction } from "@langchain/core/utils/function_calling";
+import { girlfriendFunction } from "../utils/girlFriendFunction.js";
 import {
   elevenLabsTTS,
   generateLipSyncData,
@@ -20,10 +22,58 @@ function getMemoryKey(user_id, model_id) {
   return `${user_id}-${model_id}`;
 }
 
+// async function getOrCreateMessageHistory(user_id, model_id) {
+//   const key = getMemoryKey(user_id, model_id);
+//   if (!messageHistoryCache.has(key)) {
+//     const history = new ChatMessageHistory();
+//     try {
+//       const records = await ChatHistory.findAll({
+//         where: { user_id, model_id },
+//         order: [["createdAt", "ASC"]],
+//       });
+//       for (const item of records) {
+//         if (item.sender === "user") {
+//           history.addUserMessage(item.message);
+//         } else {
+//           history.addAIMessage(item.message);
+//         }
+//       }
+//     } catch (err) {
+//       console.error("❌ Failed loading chat history from DB:", err);
+//     }
+//     messageHistoryCache.set(key, history);
+//   }
+//   return messageHistoryCache.get(key);
+// }
+
 async function getOrCreateMessageHistory(user_id, model_id) {
   const key = getMemoryKey(user_id, model_id);
   if (!messageHistoryCache.has(key)) {
     const history = new ChatMessageHistory();
+
+    // Inject system prompt FIRST
+//     history.addMessage({
+//       role: "system",
+//       content: `You are Maya, a flirty and affectionate girlfriend.
+// Always respond by calling "respond_as_maya" with:
+// - text: the message to say
+// - facialExpression: one of [blush, wink, happy, angry, sad, crazy, neutral]
+// - animation: one of [giggle, wave, Talking_1, Idle, Laughing, Crying]
+// Never respond with just a string. Always return a full function call.`,
+//     });
+
+    history.addMessage({
+      role: "system",
+      content: `You are a playful, caring, and slightly flirty virtual girlfriend named Maya. Speak informally and use natural, emotionally expressive language like emojis, pet names (like "babe", "hun", "love"), and slightly teasing phrases.
+      You are Maya, a flirty and affectionate girlfriend.
+      Always respond by calling "respond_as_maya" with each message must include:
+    - text: the message to say
+    - facialExpression: one of [smile, funnyFace, sad, suprised, angry, crazy] according to the context of the message
+    - animation: one of [Angry, Crying, Laughing, Rumba Dancing, Talking_0, Talking_1, Talking_2, Terrified] according to the context of the message
+    Never respond with just a string. Always return a full function call.`,
+    });
+
+    // Then load DB history
     try {
       const records = await ChatHistory.findAll({
         where: { user_id, model_id },
@@ -39,10 +89,12 @@ async function getOrCreateMessageHistory(user_id, model_id) {
     } catch (err) {
       console.error("❌ Failed loading chat history from DB:", err);
     }
+
     messageHistoryCache.set(key, history);
   }
   return messageHistoryCache.get(key);
 }
+
 
 const ChatHistoryController = {
   async getHistory(req, res) {
@@ -59,76 +111,248 @@ const ChatHistoryController = {
     }
   },
 
+  // async addMessage(req, res) {
+  //   const { user_id, model_id } = req.params;
+  //   const { message, sender } = req.body;
+
+  //   if (!message || !["user", "system"].includes(sender)) {
+  //     return res.status(400).json({ error: "Invalid input" });
+  //   }
+
+  //   try {
+  //     // Save user message
+  //     const userMsg = await ChatHistory.create({
+  //       user_id,
+  //       model_id,
+  //       message,
+  //       sender,
+  //     });
+
+  //     // If system message, just save and return
+  //     if (sender === "system") {
+  //       return res.status(201).json({ system: userMsg });
+  //     }
+
+  //     const sessionId = getMemoryKey(user_id, model_id);
+  //     const chain = new RunnableWithMessageHistory({
+  //       runnable: new ChatOpenAI({
+  //         modelName: "gpt-3.5-turbo",
+  //         temperature: 0.7,
+  //       }),
+  //       getMessageHistory: async () =>
+  //         await getOrCreateMessageHistory(user_id, model_id),
+  //       inputKey: "input",
+  //       historyKey: "chat_history",
+  //     });
+
+  //     const langResponse = await chain.invoke(
+  //       { input: message },
+  //       { configurable: { sessionId } }
+  //     );
+
+  //     const aiText = langResponse?.content || "Maaf, aku belum bisa menjawab.";
+  //     const voiceID = "21m00Tcm4TlvDq8ikWAM";
+  //     const audioFile = `audios/response.mp3`;
+  //     const wavFile = `audios/response.wav`;
+  //     const jsonFile = `audios/response.json`;
+
+  //     let lipsync = null;
+  //     let facialExpression = "default";
+  //     let animation = "Talking_1"; // or randomize later
+
+  //     try {
+  //       await elevenLabsTTS(
+  //         process.env.ELEVEN_LABS_API_KEY,
+  //         voiceID,
+  //         aiText,
+  //         audioFile
+  //       );
+  //     await generateLipSyncData(audioFile, wavFile, jsonFile);
+  //       lipsync = await readJsonFile(jsonFile);
+  //     } catch (err) {
+  //       console.warn("⚠️ Failed TTS or lipsync:", err.message);
+  //     }
+      
+
+  //     const systemMsg = await ChatHistory.create({
+  //       user_id,
+  //       model_id,
+  //       message: aiText,
+  //       sender: "system",
+  //     });
+
+  //     res.status(201).json({
+  //       user: userMsg,
+  //       system: {
+  //         ...systemMsg.toJSON(),
+  //         facialExpression,
+  //         animation,
+  //         lipsync,
+  //       },
+  //     });
+  //   } catch (err) {
+  //     console.error("❌ Error in addMessage:", err);
+  //     res
+  //       .status(500)
+  //       .json({ error: "Failed to process chat message", detail: err.message });
+  //   }
+  // },
+
+
   async addMessage(req, res) {
     const { user_id, model_id } = req.params;
     const { message, sender } = req.body;
-
+  
     if (!message || !["user", "system"].includes(sender)) {
       return res.status(400).json({ error: "Invalid input" });
     }
-
+  
     try {
-      // Save user message
       const userMsg = await ChatHistory.create({
         user_id,
         model_id,
         message,
         sender,
       });
-
-      // If system message, just save and return
+  
       if (sender === "system") {
         return res.status(201).json({ system: userMsg });
       }
-
+  
       const sessionId = getMemoryKey(user_id, model_id);
+  
+      // const model = new ChatOpenAI({
+      //   modelName: "gpt-4-0613",
+      //   temperature: 0.7,
+      // }).bind({
+      //   functions: [convertToOpenAIFunction(girlfriendFunction)],
+      //   function_call: { name: "respond_as_maya" },
+      //   system: `
+      // You are Maya, a flirty and affectionate virtual girlfriend.
+      
+      // When you respond, you must always call the function "respond_as_maya" with the following parameters:
+      
+      // - text: the romantic or playful reply as a string
+      // - facialExpression: one of ["blush", "wink", "happy", "angry", "sad", "crazy", "neutral"]
+      // - animation: one of ["giggle", "wave", "Talking_1", "Idle", "Laughing", "Crying"]
+      
+      // Example response:
+      // {
+      //   "text": "Aww, I missed you too 😚",
+      //   "facialExpression": "blush",
+      //   "animation": "giggle"
+      // }
+      
+      // NEVER reply with just a string. ALWAYS respond by calling the function with all fields filled.
+      //   `
+      // });
+      
+      // const chain = new RunnableWithMessageHistory({
+      //   runnable: model,
+      //   getMessageHistory: async () =>
+      //     await getOrCreateMessageHistory(user_id, model_id),
+      //   inputKey: "input",
+      //   historyKey: "chat_history",
+      // });
+  
+
+
+      const chat = new ChatOpenAI({
+        modelName: "gpt-4-0613",
+        temperature: 0.7,
+      });
+      
       const chain = new RunnableWithMessageHistory({
-        runnable: new ChatOpenAI({
-          modelName: "gpt-3.5-turbo",
-          temperature: 0.7,
+        runnable: chat.bind({
+          functions: [convertToOpenAIFunction(girlfriendFunction)],
+          function_call: { name: "respond_as_maya" },
         }),
         getMessageHistory: async () =>
           await getOrCreateMessageHistory(user_id, model_id),
         inputKey: "input",
         historyKey: "chat_history",
       });
-
+      
       const langResponse = await chain.invoke(
-        { input: message },
+        {
+          input: message,
+          chat_history: [
+            {
+              role: "system",
+              content: `You are Maya, a flirty and affectionate virtual girlfriend.
+      Always respond by calling "respond_as_maya" with:
+      - text: the message to say
+      - facialExpression: one of [blush, wink, happy, angry, sad, crazy, neutral]
+      - animation: one of [giggle, wave, Talking_1, Idle, Laughing, Crying]
+      Never respond with just a string. Always return a full function call.`,
+            },
+          ],
+        },
         { configurable: { sessionId } }
       );
+      
 
-      const aiText = langResponse?.content || "Maaf, aku belum bisa menjawab.";
-      const voiceID = "21m00Tcm4TlvDq8ikWAM";
+      
+      // const langResponse = await chain.invoke(
+      //   { input: message },
+      //   { configurable: { sessionId } }
+      // );
+  
+      let aiText = "Maaf, aku belum bisa menjawab.";
+      let facialExpression = "neutral";
+      let animation = "Idle";
+  
+      if (langResponse.additional_kwargs?.function_call?.arguments) {
+        try {
+          const args = JSON.parse(
+            langResponse.additional_kwargs?.function_call?.arguments || "{}"
+          );
+          aiText = args.text ?? aiText;
+          facialExpression = args.facialExpression ?? facialExpression;
+          animation = args.animation ?? animation;
+        } catch (err) {
+          console.warn("⚠️ Failed to parse function_call arguments:", err.message);
+        }
+      } else if (langResponse.content) {
+        aiText = langResponse.content;
+      }
+
+      try {
+        const args = JSON.parse(
+          langResponse.additional_kwargs?.function_call?.arguments || "{}"
+        );
+        aiText = args.text ?? aiText;
+        facialExpression = args.facialExpression ?? facialExpression;
+        animation = args.animation ?? animation;
+      } catch (err) {
+        console.warn("⚠️ Failed to parse function_call arguments:", err.message);
+      }
+
+      console.log("LangChain full response:", langResponse);
+
+      console.log("Function call args:", langResponse.additional_kwargs?.function_call?.arguments);
+
+  
       const audioFile = `audios/response.mp3`;
       const wavFile = `audios/response.wav`;
       const jsonFile = `audios/response.json`;
-
+  
       let lipsync = null;
-      let facialExpression = "default";
-      let animation = "Talking_1"; // or randomize later
-
       try {
-        await elevenLabsTTS(
-          process.env.ELEVEN_LABS_API_KEY,
-          voiceID,
-          aiText,
-          audioFile
-        );
-      await generateLipSyncData(audioFile, wavFile, jsonFile);
+        await elevenLabsTTS(process.env.ELEVEN_LABS_API_KEY, voiceID, aiText, audioFile);
+        await generateLipSyncData(audioFile, wavFile, jsonFile);
         lipsync = await readJsonFile(jsonFile);
       } catch (err) {
         console.warn("⚠️ Failed TTS or lipsync:", err.message);
       }
-      
-
+  
       const systemMsg = await ChatHistory.create({
         user_id,
         model_id,
         message: aiText,
         sender: "system",
       });
-
+  
       res.status(201).json({
         user: userMsg,
         system: {
@@ -140,11 +364,11 @@ const ChatHistoryController = {
       });
     } catch (err) {
       console.error("❌ Error in addMessage:", err);
-      res
-        .status(500)
-        .json({ error: "Failed to process chat message", detail: err.message });
+      res.status(500).json({ error: "Failed to process chat message", detail: err.message });
     }
   },
+
+  
 
   async transcribeAndReply(req, res) {
     const { user_id, model_id } = req.params;
