@@ -1,17 +1,23 @@
 {
   "metadata": {
     "soundFile": "C:\\2. Code Repository\\200. Projects\\Conversia\\Backend\\audios\\response.wav",
-    "duration": 1.51
+    "duration": 2.03
   },
   "mouthCues": [
     { "start": 0.00, "end": 0.16, "value": "X" },
-    { "start": 0.16, "end": 0.29, "value": "B" },
-    { "start": 0.29, "end": 0.43, "value": "C" },
-    { "start": 0.43, "end": 0.78, "value": "B" },
-    { "start": 0.78, "end": 0.85, "value": "F" },
-    { "start": 0.85, "end": 0.99, "value": "B" },
+    { "start": 0.16, "end": 0.23, "value": "B" },
+    { "start": 0.23, "end": 0.29, "value": "C" },
+    { "start": 0.29, "end": 0.36, "value": "B" },
+    { "start": 0.36, "end": 0.50, "value": "C" },
+    { "start": 0.50, "end": 0.85, "value": "B" },
+    { "start": 0.85, "end": 0.92, "value": "F" },
+    { "start": 0.92, "end": 0.99, "value": "B" },
     { "start": 0.99, "end": 1.06, "value": "C" },
-    { "start": 1.06, "end": 1.20, "value": "B" },
-    { "start": 1.20, "end": 1.51, "value": "X" }
+    { "start": 1.06, "end": 1.14, "value": "A" },
+    { "start": 1.14, "end": 1.26, "value": "B" },
+    { "start": 1.26, "end": 1.40, "value": "F" },
+    { "start": 1.40, "end": 1.48, "value": "A" },
+    { "start": 1.48, "end": 1.75, "value": "C" },
+    { "start": 1.75, "end": 2.03, "value": "X" }
   ]
 }
