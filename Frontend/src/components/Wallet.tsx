@@ -41,13 +41,6 @@ const Wallet: React.FC = () => {
     <div className="text-white px-4 py-2 rounded-lg z-[50]">
       <ConnectButton />
       <p className="text-center">Wallet Status: {wallet.status}</p>
-      {wallet.status === "connected" && (
-        <>
-          <p>Account: {wallet.account?.address}</p>
-          <p>Ellipsis: {addressEllipsis(wallet.account?.address || "")}</p>
-          <p>Chain: {wallet.chain?.name}</p>
-        </>
-      )}
     </div>
   );
 };

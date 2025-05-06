@@ -1,4 +1,7 @@
+import fs from "fs/promises";
+import fsSync from "fs";
 import ChatHistory from "../models/ChatHistory.js";
+import { OpenAI } from "openai";
 import { ChatOpenAI } from "@langchain/openai";
 import { ChatMessageHistory } from "langchain/stores/message/in_memory";
 import { RunnableWithMessageHistory } from "@langchain/core/runnables";
@@ -7,13 +10,11 @@ import {
   generateLipSyncData,
   readJsonFile,
 } from "../utils/utils.js";
-import fetch from "node-fetch";
-import fs from "fs/promises";
-import path from "path";
 
 // Memory cache per user-avatar combo
 const messageHistoryCache = new Map();
-
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const voiceID = "21m00Tcm4TlvDq8ikWAM";
 
 function getMemoryKey(user_id, model_id) {
   return `${user_id}-${model_id}`;
@@ -44,11 +45,6 @@ async function getOrCreateMessageHistory(user_id, model_id) {
 }
 
 const ChatHistoryController = {
-
-  
-
-  
-
   async getHistory(req, res) {
     const { user_id, model_id } = req.params;
     try {
@@ -103,25 +99,7 @@ const ChatHistoryController = {
       );
 
       const aiText = langResponse?.content || "Maaf, aku belum bisa menjawab.";
-
-      // Optional: TTS and animation via /chat pipeline
-      // let lipsync = null, facialExpression = null, animation = null;
-      // try {
-      //   const resp = await fetch("http://localhost:5555/chat", {
-      //     method: "POST",
-      //     headers: { "Content-Type": "application/json" },
-      //     body: JSON.stringify({ message: aiText })
-      //   });
-
-      //   const data = await resp.json();
-      //   facialExpression = data.message?.facialExpression || "default";
-      //   animation = data.message?.animation || "Idle";
-      //   lipsync = data.message?.lipsync || null;
-      // } catch (err) {
-      //   console.warn("⚠️ Failed to enrich with TTS/animation:", err);
-      // }
       const voiceID = "21m00Tcm4TlvDq8ikWAM";
-
       const audioFile = `audios/response.mp3`;
       const wavFile = `audios/response.wav`;
       const jsonFile = `audios/response.json`;
@@ -167,6 +145,89 @@ const ChatHistoryController = {
         .json({ error: "Failed to process chat message", detail: err.message });
     }
   },
+
+  async transcribeAndReply(req, res) {
+    const { user_id, model_id } = req.params;
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: "No audio file uploaded" });
+
+    try {
+      const transcript = await openai.audio.transcriptions.create({
+        file: fsSync.createReadStream(file.path),
+        model: "whisper-1",
+        language: "en",
+      });
+
+      const userMsg = await ChatHistory.create({
+        user_id,
+        model_id,
+        message: transcript.text,
+        sender: "user",
+      });
+
+      const sessionId = getMemoryKey(user_id, model_id);
+      const chain = new RunnableWithMessageHistory({
+        runnable: new ChatOpenAI({
+          modelName: "gpt-3.5-turbo",
+          temperature: 0.7,
+        }),
+        getMessageHistory: async () =>
+          await getOrCreateMessageHistory(user_id, model_id),
+        inputKey: "input",
+        historyKey: "chat_history",
+      });
+
+      const langResp = await chain.invoke(
+        { input: transcript.text },
+        { configurable: { sessionId } }
+      );
+      const aiText = langResp?.content || "Maaf, aku belum bisa menjawab.";
+
+      const mp3 = `audios/response.mp3`;
+      const wav = `audios/response.wav`;
+      const json = `audios/response.json`;
+
+      await elevenLabsTTS(
+        process.env.ELEVEN_LABS_API_KEY,
+        voiceID,
+        aiText,
+        mp3
+      );
+      await generateLipSyncData(mp3, wav, json);
+
+      const lipsync = await readJsonFile(json);
+      const audioBase64 = (await fs.readFile(mp3)).toString("base64");
+
+      const systemMsg = await ChatHistory.create({
+        user_id,
+        model_id,
+        message: aiText,
+        sender: "system",
+      });
+
+      res.status(201).json({
+        user: userMsg,
+        system: {
+          ...systemMsg.toJSON(),
+          facialExpression: "smile",
+          animation: "Talking_1",
+          lipsync,
+          audio: audioBase64,
+        },
+      });
+    } catch (err) {
+      console.error("❌ transcribeAndReply error:", err);
+      res
+        .status(500)
+        .json({
+          error: "Speech-to-text processing failed",
+          detail: err.message,
+        });
+    } finally {
+      fs.unlink(file.path).catch(() => {});
+    }
+  },
+
 };
 
 export default ChatHistoryController;
