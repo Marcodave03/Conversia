@@ -3769,10 +3769,11 @@
         }
     },
     "dependencies": {
+        "@mysten/sui.js": "^0.54.1",
         "bcrypt": "^5.1.1",
         "child_process": "^1.0.2",
         "cors": "^2.8.5",
-        "dotenv": "^16.4.7",
+        "dotenv": "^16.5.0",
         "elevenlabs-node": "^2.0.3",
         "express": "^4.21.2",
         "fs": "^0.0.1-security",
