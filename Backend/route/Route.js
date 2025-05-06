@@ -3,6 +3,7 @@ import { CreateUser, GetUser, UpdateUser } from "../controller/UserController.js
 import AvatarController from "../controller/AvatarController.js";
 import BackgroundController from "../controller/BackgroundController.js";
 import ChatHistoryController from "../controller/ChatHistoryController.js";
+import upload from "../middleware/upload.js";
 
 const router = express.Router();
 
@@ -23,6 +24,9 @@ router.get("/background/:id", BackgroundController.getBackgroundById);
 
 router.get("/chat-history/:user_id/:model_id", ChatHistoryController.getHistory);
 router.post("/chat-history/:user_id/:model_id", ChatHistoryController.addMessage);
+
+
+router.post("/speech-to-text/:user_id/:model_id",upload.single("audio"),ChatHistoryController.transcribeAndReply);
 
 
 export default router;
