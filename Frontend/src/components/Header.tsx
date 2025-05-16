@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { FaUser, FaBook, FaImages } from "react-icons/fa";
+import { FaUser, FaBook, FaImages} from "react-icons/fa";
+import { IoIosWater } from "react-icons/io";
 import About from "./Background";
 import Profile from "./Profile";
 import AvatarPick from "./AvatarPick";
+import NFTGallery from "./NftMarket"; 
 import logo from "../assets/conversia-lg.png";
 import { useWallet } from "@suiet/wallet-kit";
 import { useNavigate } from "react-router-dom";
@@ -23,6 +25,7 @@ const Header: React.FC<HeaderProps> = ({
   const [showProfile, setShowProfile] = useState(false);
   const [showBackground, setShowBackground] = useState(false);
   const [showAvatar, setShowAvatar] = useState(false);
+  const [showNft, setShowNft] = useState(false);
   const wallet = useWallet();
   const navigate = useNavigate();
 
@@ -61,7 +64,7 @@ const Header: React.FC<HeaderProps> = ({
             onClick={() => setShowBackground(true)}
             className="flex items-center gap-2 hover:opacity-80"
           >
-            <FaImages className="text-blue-400 text-2xl" />
+            <FaImages className="text-red-400 text-2xl" />
             Background
           </button>
 
@@ -71,6 +74,13 @@ const Header: React.FC<HeaderProps> = ({
           >
             <FaUser className="text-yellow-400 text-2xl" />
             Avatar
+          </button>
+          <button
+            onClick={() => setShowNft(true)}
+            className="flex items-center gap-2 hover:opacity-80"
+          >
+            <IoIosWater className="text-blue-200 text-2xl" />
+            NFT
           </button>
         </nav>
       </header>
@@ -103,6 +113,7 @@ const Header: React.FC<HeaderProps> = ({
           }}
         />
       )}
+      {showNft && <NFTGallery onClose={() => setShowNft(false)} />}
     </>
   );
 };

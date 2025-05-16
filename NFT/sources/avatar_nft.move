@@ -8,7 +8,7 @@ module Conversia::AvatarNFT {
         id: UID,
         name: vector<u8>,
         description: vector<u8>,
-        image_url: vector<u8>,
+        url: vector<u8>,              // ✅ changed from image_url
         metadata_url: vector<u8>,
         owner: address
     }
@@ -21,7 +21,7 @@ module Conversia::AvatarNFT {
     public entry fun mint_avatar(
         name: vector<u8>,
         description: vector<u8>,
-        image_url: vector<u8>,
+        url: vector<u8>,
         metadata_url: vector<u8>,
         ctx: &mut tx_context::TxContext
     ) {
@@ -29,11 +29,12 @@ module Conversia::AvatarNFT {
             id: object::new(ctx),
             name,
             description,
-            image_url,
+            url,
             metadata_url,
             owner: tx_context::sender(ctx)
         };
-        transfer::transfer(avatar, tx_context::sender(ctx));
+
+        transfer::transfer(avatar, tx_context::sender(ctx)); // ✅ now correct
     }
 
 }

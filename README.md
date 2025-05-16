@@ -13,6 +13,13 @@ sui move test
 
 
 
+
+sui client objects --address 0x9e8ef56f9eacf829fe8a52ea44da4aee10b6602784168f5de91f8a18663bc665
+
+
+
+
+
 Total number of linter warnings suppressed: 1 (unique lints: 1)
 Skipping dependency verification
   {
