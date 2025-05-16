@@ -32,14 +32,6 @@ const Header: React.FC<HeaderProps> = ({
       navigate("/landing");
     }
   }, [wallet.status, navigate]);
-
-  // Debug: show selected model URL (you can remove this in production)
-  // useEffect(() => {
-  //   if (modelUrl) {
-  //     console.log("Selected avatar model:", modelUrl);
-  //   }
-  // }, [modelUrl]);
-
   return (
     <>
       {/* Conversia Logo */}
@@ -102,11 +94,6 @@ const Header: React.FC<HeaderProps> = ({
         />
       )}
       {showAvatar && (
-        // <AvatarPick
-        //   userId={2}
-        //   onClose={() => setShowAvatar(false)}
-        //   onSelectAvatar={(modelUrl) => setModelUrl(modelUrl)}
-        // />
         <AvatarPick
           userId={userId} // ✅ Use actual userId
           onClose={() => setShowAvatar(false)}
