@@ -6,7 +6,6 @@ import bgImage from "./assets/conversia-bg.png";
 import { MouthCue } from "./components/Avatar";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWallet } from "@suiet/wallet-kit";
-import ResponsiveHeader from "./components/ResponsiveHeader";
 
 type Message = {
   message: string;
@@ -356,15 +355,14 @@ const App: React.FC<InterviewProps> = () => {
           setModelUrl={setModelUrl}
           setBackgroundUrl={setBackgroundUrl}
           setModelId={setModelId}
-          userId={userId}
+          userId={userId!}
         />
         <div className="flex-1 flex">
           <div className="w-full h-full relative">
             {/* Chat messages */}
             <div
-              className="h-[80vh] overflow-y-auto scrollbar-none space-y-4 px-5 pt-4 pb-[12vh] absolute top-[10%] left-[55%] w-[43%] z-30"
+              className="h-[79vh] overflow-y-auto scrollbar-none  space-y-4 p-4 absolute top-[10%] left-[55%] w-[43%] z-30"
               style={{
-                paddingBottom: "3vh",
                 position: "relative",
                 scrollbarWidth: "thin",
                 scrollbarColor: "#FFFFFFFF transparent",
@@ -372,45 +370,43 @@ const App: React.FC<InterviewProps> = () => {
             >
               <div className="fixed top-0 left-0 w-full h-32 bg-gradient-to-b from-[#000000]/30 to-transparent z-40 pointer-events-none"></div>
 
-              {messages.map((msg, index) => {
-                const isLast = index === messages.length - 1;
-
-                const commonBubbleClass = "max-w-[60%] p-3 text-lg";
-                const outgoing = "bg-blue-500 text-white";
-                const incoming = "bg-white";
-
-                // Rounded styles
-                const rounded = isLast
-                  ? "rounded-t-xl rounded-b-md mb-2"
-                  : "rounded-xl";
-
-                return (
+              {messages.map((msg, index) => (
+                <div
+                  key={index}
+                  className={`flex ${
+                    msg.direction === "outgoing"
+                      ? "justify-end"
+                      : "justify-start"
+                  }`}
+                >
                   <div
-                    key={index}
-                    className={`flex ${
-                      msg.direction === "outgoing"
-                        ? "justify-end"
-                        : "justify-start"
+                    className={`max-w-[60%] p-3 rounded-xl text-lg ${
+                      msg.sender === "Maya"
+                        ? "bg-white"
+                        : "bg-blue-500 text-white"
                     }`}
                   >
-                    <div
-                      className={`${commonBubbleClass} ${rounded} ${
-                        msg.sender === "Maya" ? incoming : outgoing
-                      }`}
-                    >
-                      {msg.message}
-                    </div>
+                    {msg.message}
                   </div>
-                );
-              })}
+                </div>
+              ))}
 
-              {isTyping && typingText && (
+              {isTyping && (
                 <div className="flex justify-start">
-                  <div className="bg-white p-3 rounded-xl text-lg">
-                    {typingText}
+                  <div className="bg-white p-3 rounded-xl text-lg flex items-center gap-1 min-h-[40px]">
+                    {typingText ? (
+                      typingText
+                    ) : (
+                      <div className="flex items-center space-x-1">
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
+
               {loadingTranscription && (
                 <div className="flex justify-center py-4">
                   <div className="w-8 h-8 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
