@@ -22,7 +22,6 @@ const Profile: React.FC<ProfileProps> = ({ onClose }) => {
   const [editing, setEditing] = useState<boolean>(false);
   const [newUsername, setNewUsername] = useState<string>("");
 
-  // Fetch user_id and username once wallet is connected
   useEffect(() => {
     const fetchUserData = async () => {
       if (!wallet.account?.address) return;
@@ -78,7 +77,6 @@ const Profile: React.FC<ProfileProps> = ({ onClose }) => {
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4 overflow-auto">
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-xl w-[90%] max-w-4xl min-h-[700px] p-6">
-        {/* Header */}
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
             Your Profile
@@ -93,22 +91,43 @@ const Profile: React.FC<ProfileProps> = ({ onClose }) => {
           </Button>
         </div>
 
-        {/* Tabs */}
         <Tabs defaultValue="info" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="info">Wallet Info</TabsTrigger>
-            <TabsTrigger value="history">Transaction History</TabsTrigger>
-            <TabsTrigger value="items">Owned Items</TabsTrigger>
+          <TabsList className="w-full flex gap-2 mb-6 p-0">
+            <TabsTrigger
+              value="info"
+              className="w-1/3 text-sm text-center rounded-md border border-gray-300 leading-tight h-12 flex flex-col justify-center items-center bg-gray-100 data-[state=active]:bg-white data-[state=active]:shadow data-[state=active]:border"
+            >
+              Wallet
+              <br />
+              Info
+            </TabsTrigger>
+            <TabsTrigger
+              value="history"
+              className="w-1/3 text-sm text-center rounded-md border border-gray-300 leading-tight h-12 flex flex-col justify-center items-center bg-gray-100 data-[state=active]:bg-white data-[state=active]:shadow data-[state=active]:border"
+            >
+              Transaction
+              <br />
+              History
+            </TabsTrigger>
+            <TabsTrigger
+              value="items"
+              className="w-1/3 text-sm text-center rounded-md border border-gray-300 leading-tight h-12 flex flex-col justify-center items-center bg-gray-100 data-[state=active]:bg-white data-[state=active]:shadow data-[state=active]:border"
+            >
+              Owned
+              <br />
+              Items
+            </TabsTrigger>
           </TabsList>
 
-          {/* Wallet Info */}
           <TabsContent value="info">
             <div className="space-y-4 text-lg text-gray-800 dark:text-gray-200">
               <div className="mb-6">
                 <div className="text-green-600 font-bold mb-2">
                   <p className="text-start">Wallet Status: {wallet.status}</p>
                 </div>
-                <ConnectButton />
+                <div className="w-full max-w-xs">
+                  <ConnectButton />
+                </div>
               </div>
 
               {wallet.status === "connected" && (
@@ -184,7 +203,6 @@ const Profile: React.FC<ProfileProps> = ({ onClose }) => {
             </div>
           </TabsContent>
 
-          {/* Transaction History (Dummy) */}
           <TabsContent value="history">
             <div className="space-y-4 text-gray-700 dark:text-gray-300">
               <h3 className="text-xl font-semibold mb-2">
@@ -193,7 +211,7 @@ const Profile: React.FC<ProfileProps> = ({ onClose }) => {
               <div className="space-y-3">
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 shadow-sm bg-white dark:bg-gray-800">
                   <p className="font-medium">
-                    🧍‍♀️ Purchased Avatar{" "}
+                    🧝‍♀️ Purchased Avatar{" "}
                     <span className="text-blue-500 font-semibold">#3</span>
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -215,7 +233,6 @@ const Profile: React.FC<ProfileProps> = ({ onClose }) => {
             </div>
           </TabsContent>
 
-          {/* Owned Items (Dummy) */}
           <TabsContent value="items">
             <div className="text-gray-700 dark:text-gray-300">
               <p className="mb-2">Your Avatars & Backgrounds:</p>

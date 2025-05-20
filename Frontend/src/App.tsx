@@ -6,6 +6,7 @@ import bgImage from "./assets/conversia-bg.png";
 import { MouthCue } from "./components/Avatar";
 import { motion, AnimatePresence } from "framer-motion";
 import { useWallet } from "@suiet/wallet-kit";
+import { MobileChatFrame } from "./components/MobileChatFrame";
 
 type Message = {
   message: string;
@@ -108,6 +109,8 @@ const App: React.FC<InterviewProps> = () => {
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
     null
   );
@@ -324,6 +327,16 @@ const App: React.FC<InterviewProps> = () => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typingText]);
 
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    handleResize(); // initialize on mount
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <>
       <AnimatePresence>
@@ -335,7 +348,7 @@ const App: React.FC<InterviewProps> = () => {
             exit={{ y: "-100%" }}
             transition={{ duration: 1 }}
           >
-            <h1 className="text-blue-500 text-5xl md:text-7xl font-bold typing-effect">
+            <h1 className="text-blue-500 text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-bold typing-effect">
               Conversia
             </h1>
           </motion.div>
@@ -357,136 +370,163 @@ const App: React.FC<InterviewProps> = () => {
           setModelId={setModelId}
           userId={userId!}
         />
-        <div className="flex-1 flex">
-          <div className="w-full h-full relative">
-            {/* Chat messages */}
-            <div
-              className="h-[79vh] overflow-y-auto scrollbar-none  space-y-4 p-4 absolute top-[10%] left-[55%] w-[43%] z-30"
-              style={{
-                position: "relative",
-                scrollbarWidth: "thin",
-                scrollbarColor: "#FFFFFFFF transparent",
-              }}
-            >
-              <div className="fixed top-0 left-0 w-full h-32 bg-gradient-to-b from-[#000000]/30 to-transparent z-40 pointer-events-none"></div>
 
-              {messages.map((msg, index) => (
-                <div
-                  key={index}
-                  className={`flex ${
-                    msg.direction === "outgoing"
-                      ? "justify-end"
-                      : "justify-start"
-                  }`}
+        {isMobile && (
+          <MobileChatFrame
+            expression={currentExpression}
+            animation={currentAnimation}
+            mouthCues={currentMouthCues}
+            audioDuration={audioDuration}
+            modelUrl={modelUrl}
+            messages={messages}
+            isChatOpen={isChatOpen}
+            setIsChatOpen={setIsChatOpen}
+            typingText={typingText}
+            isTyping={isTyping}
+            userInput={userInput}
+            setUserInput={setUserInput}
+            handleSend={handleSend}
+            isSpeechEnabled={isSpeechEnabled}
+            toggleSpeech={toggleSpeech}
+            isSpeaking={isSpeaking}
+            isRecording={isRecording}
+            toggleRecording={toggleRecording}
+            loadingTranscription={loadingTranscription}
+          />
+        )}
+
+        {/* ===== Render DESKTOP layout only if not mobile ===== */}
+        {!isMobile && (
+          <div className="flex-1 flex">
+            <div className="w-full h-full relative">
+              {/* Desktop Avatar */}
+              <div className="absolute left-0 bottom-0 w-full md:w-[50vw] h-full z-0 bg-transparent">
+                <Canvas
+                  shadows
+                  camera={{ position: [0, -0.5, 1], fov: 10 }}
+                  style={{ width: "100%", height: "100%" }}
+                  gl={{ alpha: true, preserveDrawingBuffer: true }}
                 >
+                  <Experience
+                    expression={currentExpression}
+                    animation={currentAnimation}
+                    mouthCues={currentMouthCues}
+                    audioDuration={audioDuration}
+                    modelUrl={modelUrl}
+                  />
+                </Canvas>
+              </div>
+
+              {/* Desktop Chat Frame */}
+              <div
+                className="absolute top-0 left-[55%] w-[43%] z-30 overflow-y-auto space-y-4 px-4 pt-4 pb-[12vh]"
+                style={{
+                  top: "96px",
+                  height: "calc(100% - 160px)",
+                  scrollbarWidth: "thin",
+                  scrollbarColor: "#FFFFFF transparent",
+                  scrollPaddingBottom: "2vh",
+                }}
+              >
+                {messages.map((msg, index) => (
                   <div
-                    className={`max-w-[60%] p-3 rounded-xl text-lg ${
-                      msg.sender === "Maya"
-                        ? "bg-white"
-                        : "bg-blue-500 text-white"
+                    key={index}
+                    className={`flex ${
+                      msg.direction === "outgoing"
+                        ? "justify-end"
+                        : "justify-start"
                     }`}
                   >
-                    {msg.message}
+                    <div
+                      className={`max-w-[80%] sm:max-w-[70%] md:max-w-[60%] p-3 rounded-xl text-base sm:text-lg ${
+                        msg.sender === "Maya"
+                          ? "bg-white text-gray-900"
+                          : "bg-blue-600 text-white"
+                      }`}
+                    >
+                      {msg.message}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
 
-              {isTyping && (
-                <div className="flex justify-start">
-                  <div className="bg-white p-3 rounded-xl text-lg flex items-center gap-1 min-h-[40px]">
-                    {typingText ? (
-                      typingText
-                    ) : (
-                      <div className="flex items-center space-x-1">
-                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                        <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></span>
-                      </div>
-                    )}
+                {isTyping && (
+                  <div className="flex justify-start">
+                    <div className="bg-white p-3 rounded-xl text-lg flex items-center gap-1 min-h-[40px]">
+                      {typingText || (
+                        <div className="flex items-center space-x-1">
+                          <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                          <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                          <span className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {loadingTranscription && (
-                <div className="flex justify-center py-4">
-                  <div className="w-8 h-8 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
-                </div>
-              )}
-              <div ref={bottomRef} />
-            </div>
+                {loadingTranscription && (
+                  <div className="flex justify-center py-4">
+                    <div className="w-8 h-8 border-4 border-blue-500 border-dashed rounded-full animate-spin"></div>
+                  </div>
+                )}
 
-            {/* Avatar (with lower z-index) */}
-            <div className="absolute left-0 bottom-0 w-[50vw] h-[100vh] z-20 bg-transparent">
-              <Canvas
-                shadows
-                camera={{ position: [0, -0.5, 1], fov: 10 }}
-                style={{ width: "100%", height: "100%" }}
-                gl={{ alpha: true, preserveDrawingBuffer: true }}
-              >
-                <Experience
-                  expression={currentExpression}
-                  animation={currentAnimation}
-                  mouthCues={currentMouthCues}
-                  audioDuration={audioDuration}
-                  modelUrl={modelUrl}
-                />
-              </Canvas>
-            </div>
-          </div>
-        </div>
-
-        {/* Input Section */}
-        <div className="absolute z-[10] bottom-8 right-10 chats input-container bg-gray-800 bg-opacity-90 h-[7vh] flex items-center w-[43%] mx-auto rounded-full px-4">
-          <input
-            type="text"
-            value={userInput}
-            onChange={(e) => setUserInput(e.target.value)}
-            placeholder="Start typing ..."
-            className="border-none bg-transparent w-full text-white placeholder-white placeholder-opacity-70 text-2xl focus:outline-none px-4 py-2"
-            onKeyPress={(e) => {
-              if (e.key === "Enter") {
-                handleSend();
-              }
-            }}
-            style={{
-              paddingLeft: "50px",
-              paddingTop: "4px",
-            }}
-          />
-
-          {/* Speech section */}
-          <div className="flex gap-4 items-center">
-            {/* Recording button */}
-            <span
-              className={`text-white text-4xl cursor-pointer transition-opacity duration-300 ${
-                isRecording ? "text-red-500 animate-pulse" : "opacity-50"
-              }`}
-              onClick={toggleRecording}
-            >
-              🎙️
-            </span>
-
-            {/* Text-to-Speech toggle button */}
-            <span
-              className={`text-white text-4xl cursor-pointer transition-opacity duration-300 ${
-                isSpeechEnabled ? "opacity-100" : "opacity-50"
-              } ${isSpeaking ? "animate-pulse" : ""}`}
-              onClick={toggleSpeech}
-            >
-              🔈
-            </span>
-
-            {/* Listening status text */}
-            {isRecording && (
-              <div className="flex items-center ml-2 animate-pulse">
-                <span className="text-red-500 text-2xl">🎤</span>
-                <span className="text-red-500 font-semibold ml-2">
-                  Recording...
-                </span>
+                <div ref={bottomRef} className="scroll-mb-[72px]" />
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
+
+        {!isMobile && (
+          <div className="absolute z-40 bottom-4 left-4 right-4 md:right-10 md:left-auto md:w-[43%] chats input-container bg-gray-800 bg-opacity-90 h-[60px] sm:h-[64px] flex items-center rounded-full px-4">
+            <input
+              type="text"
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              placeholder="Start typing ..."
+              className="border-none bg-transparent w-full text-white placeholder-white placeholder-opacity-70 text-2xl focus:outline-none px-4 py-2"
+              onKeyPress={(e) => {
+                if (e.key === "Enter") {
+                  handleSend();
+                }
+              }}
+              style={{
+                paddingLeft: "50px",
+                paddingTop: "4px",
+              }}
+            />
+
+            <div className="flex gap-4 items-center">
+              {/* Recording button */}
+              <span
+                className={`text-white text-4xl cursor-pointer transition-opacity duration-300 ${
+                  isRecording ? "text-red-500 animate-pulse" : "opacity-50"
+                }`}
+                onClick={toggleRecording}
+              >
+                🎙️
+              </span>
+
+              {/* Text-to-Speech toggle */}
+              <span
+                className={`text-white text-4xl cursor-pointer transition-opacity duration-300 ${
+                  isSpeechEnabled ? "opacity-100" : "opacity-50"
+                } ${isSpeaking ? "animate-pulse" : ""}`}
+                onClick={toggleSpeech}
+              >
+                🔈
+              </span>
+
+              {/* Recording Status */}
+              {isRecording && (
+                <div className="flex items-center ml-2 animate-pulse">
+                  <span className="text-red-500 text-2xl">🎤</span>
+                  <span className="text-red-500 font-semibold ml-2">
+                    Recording...
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
