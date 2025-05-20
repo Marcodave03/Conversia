@@ -13,7 +13,7 @@ type NFTGalleryProps = {
 };
 
 type SuiObjectFields = {
-  name: number[];         // was string, now number[]
+  name: number[];
   url: number[];
   metadata_url: number[];
 };
@@ -40,8 +40,9 @@ type SuiGetOwnedObjectsResponse = {
 
 const NFTGallery: React.FC<NFTGalleryProps> = ({ onClose }) => {
   const [nfts, setNfts] = useState<NFT[]>([]);
-  const SUI_ADDRESS =
-    "0x9e8ef56f9eacf829fe8a52ea44da4aee10b6602784168f5de91f8a18663bc665";
+  const [sellingId, setSellingId] = useState<string | null>(null);
+
+  const SUI_ADDRESS = "0xcdf86d8b2bee2139300484722b7563b09cfba83d6e5dc745d8f9af82a354557a";
 
   useEffect(() => {
     const fetchNFTs = async () => {
@@ -84,6 +85,13 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ onClose }) => {
     fetchNFTs();
   }, []);
 
+  const handleSell = (nftId: string) => {
+    setSellingId(nftId);
+    // TODO: Integrate with transaction function
+    console.log(`🔁 Selling NFT: ${nftId}`);
+    alert(`Pretending to sell NFT ${nftId} — add logic to trigger blockchain transaction.`);
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
       <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto shadow-xl relative">
@@ -118,6 +126,12 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ onClose }) => {
                 >
                   View Metadata
                 </a>
+                <button
+                  className="mt-3 w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded-lg font-semibold"
+                  onClick={() => handleSell(nft.objectId)}
+                >
+                  Sell
+                </button>
               </div>
             ))}
           </div>

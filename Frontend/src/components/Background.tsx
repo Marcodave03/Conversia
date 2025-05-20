@@ -2,6 +2,9 @@ import React, { useEffect, useState } from "react";
 import Background1 from "../assets/house-bg.jpg";
 import Background2 from "../assets/garage-bg.jpg";
 import Background3 from "../assets/conversia-bg.png";
+import Background4 from "../assets/forest-bg.png";
+import Background5 from "../assets/cyberpunk-bg.png";
+
 import { Button } from "../components/ui/button";
 import { X } from "lucide-react";
 
@@ -47,6 +50,20 @@ const Background: React.FC<BackgroundProps> = ({
       image_id: 3,
       src: Background3,
       alt: "Conversia Background",
+      owned: false,
+    },
+    {
+      id: "bg4",
+      image_id: 4,
+      src: Background4,
+      alt: "Forest Background",
+      owned: false,
+    },
+    {
+      id: "bg5",
+      image_id: 5,
+      src: Background5,
+      alt: "City Background",
       owned: false,
     },
   ]);

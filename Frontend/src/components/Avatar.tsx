@@ -143,7 +143,7 @@ export function Avatar({
     }
 
     if (!animation) {
-      idleAction.reset().fadeIn(0.5).play();
+      idleAction.reset().play();
     } else {
       const requestedAction = actions[animation];
       if (requestedAction) {
@@ -337,6 +337,11 @@ useGLTF.preload("/models/girl2.glb");
 useGLTF.preload("/models/girl3.glb");
 useGLTF.preload("/models/girl4.glb");
 useGLTF.preload("/models/girl5.glb");
-useGLTF.preload("/models/hot1.glb");
-useGLTF.preload("/models/boy1.glb");
+useGLTF.preload("/models/girl6.glb");
+useGLTF.preload("/models/girl7.glb");
+useGLTF.preload("/models/girl8.glb");
+useGLTF.preload("/models/girl9.glb");
+useGLTF.preload("/models/girl10.glb");
+useGLTF.preload("/models/girl11.glb");
+useGLTF.preload("/models/girl12.glb");
 useGLTF.preload("/models/animations.glb");

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { FaUser, FaBook, FaImages} from "react-icons/fa";
+import { FaUser, FaBook, FaImages } from "react-icons/fa";
 import { IoIosWater } from "react-icons/io";
 import About from "./Background";
 import Profile from "./Profile";
 import AvatarPick from "./AvatarPick";
-import NFTGallery from "./NftMarket"; 
+import NFTGallery from "./NftMarket";
+import NFTMarketplace from "./MarketPlace";
 import logo from "../assets/conversia-lg.png";
 import { useWallet } from "@suiet/wallet-kit";
 import { useNavigate } from "react-router-dom";
@@ -26,6 +27,7 @@ const Header: React.FC<HeaderProps> = ({
   const [showBackground, setShowBackground] = useState(false);
   const [showAvatar, setShowAvatar] = useState(false);
   const [showNft, setShowNft] = useState(false);
+  const [showMarket, setShowMarket] = useState(false);
   const wallet = useWallet();
   const navigate = useNavigate();
 
@@ -82,6 +84,12 @@ const Header: React.FC<HeaderProps> = ({
             <IoIosWater className="text-blue-200 text-2xl" />
             NFT
           </button>
+          <button
+            onClick={() => setShowMarket(true)}
+            className="flex items-center gap-2 hover:opacity-80"
+          >
+            <FaImages className="text-red-400 text-2xl" />
+          </button>
         </nav>
       </header>
 
@@ -114,6 +122,7 @@ const Header: React.FC<HeaderProps> = ({
         />
       )}
       {showNft && <NFTGallery onClose={() => setShowNft(false)} />}
+      {showMarket && <NFTMarketplace onClose={() => setShowMarket(false)} />}
     </>
   );
 };

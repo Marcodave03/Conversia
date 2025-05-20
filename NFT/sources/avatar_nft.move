@@ -23,6 +23,7 @@ module Conversia::AvatarNFT {
         description: vector<u8>,
         url: vector<u8>,
         metadata_url: vector<u8>,
+        recipient: address,
         ctx: &mut tx_context::TxContext
     ) {
         let avatar = Avatar {
@@ -31,10 +32,10 @@ module Conversia::AvatarNFT {
             description,
             url,
             metadata_url,
-            owner: tx_context::sender(ctx)
+            owner: recipient
         };
 
-        transfer::transfer(avatar, tx_context::sender(ctx)); // ✅ now correct
+        transfer::transfer(avatar, recipient); // ✅ now correct
     }
 
 }
