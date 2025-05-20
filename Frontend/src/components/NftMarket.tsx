@@ -10,6 +10,8 @@ type NFT = {
 
 type NFTGalleryProps = {
   onClose: () => void;
+  walletAddress: string;
+  network: "mainnet" | "testnet";
 };
 
 type SuiObjectFields = {
@@ -38,23 +40,34 @@ type SuiGetOwnedObjectsResponse = {
   };
 };
 
-const NFTGallery: React.FC<NFTGalleryProps> = ({ onClose }) => {
+const NFTGallery: React.FC<NFTGalleryProps> = ({
+  onClose,
+  walletAddress,
+  network,
+}) => {
   const [nfts, setNfts] = useState<NFT[]>([]);
-  const [sellingId, setSellingId] = useState<string | null>(null);
 
-  const SUI_ADDRESS = "0xcdf86d8b2bee2139300484722b7563b09cfba83d6e5dc745d8f9af82a354557a";
+  const RPC_ENDPOINT =
+    network === "mainnet"
+      ? "https://fullnode.mainnet.sui.io"
+      : "https://fullnode.testnet.sui.io";
 
   useEffect(() => {
+    if (!walletAddress) {
+      setNfts([]);
+      return;
+    }
+
     const fetchNFTs = async () => {
       try {
-        const response = await fetch("https://fullnode.testnet.sui.io", {
+        const response = await fetch(RPC_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             jsonrpc: "2.0",
             id: 1,
             method: "suix_getOwnedObjects",
-            params: [SUI_ADDRESS, { options: { showContent: true } }],
+            params: [walletAddress, { options: { showContent: true } }],
           }),
         });
 
@@ -66,10 +79,10 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ onClose }) => {
             item.data?.content?.type.includes("AvatarNFT::Avatar")
           )
           .map((item) => {
-            const fields = item.data.content!.fields;
+            const fields = item.data!.content!.fields;
             const decoder = new TextDecoder();
             return {
-              objectId: item.data.objectId,
+              objectId: item.data!.objectId,
               name: decoder.decode(new Uint8Array(fields.name)),
               image_url: decoder.decode(new Uint8Array(fields.url)),
               metadata_url: decoder.decode(new Uint8Array(fields.metadata_url)),
@@ -79,18 +92,12 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ onClose }) => {
         setNfts(avatarNfts);
       } catch (error) {
         console.error("❌ Failed to fetch NFTs:", error);
+        setNfts([]);
       }
     };
 
     fetchNFTs();
-  }, []);
-
-  const handleSell = (nftId: string) => {
-    setSellingId(nftId);
-    // TODO: Integrate with transaction function
-    console.log(`🔁 Selling NFT: ${nftId}`);
-    alert(`Pretending to sell NFT ${nftId} — add logic to trigger blockchain transaction.`);
-  };
+  }, [walletAddress, network]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-50 flex items-center justify-center p-6">
@@ -126,12 +133,6 @@ const NFTGallery: React.FC<NFTGalleryProps> = ({ onClose }) => {
                 >
                   View Metadata
                 </a>
-                <button
-                  className="mt-3 w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-4 rounded-lg font-semibold"
-                  onClick={() => handleSell(nft.objectId)}
-                >
-                  Sell
-                </button>
               </div>
             ))}
           </div>

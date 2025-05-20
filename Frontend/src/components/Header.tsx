@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { FaUser, FaBook, FaImages } from "react-icons/fa";
+import { FaBasketShopping } from "react-icons/fa6";
 import { IoIosWater } from "react-icons/io";
 import About from "./Background";
 import Profile from "./Profile";
 import AvatarPick from "./AvatarPick";
 import NFTGallery from "./NftMarket";
-import NFTMarketplace from "./MarketPlace";
+import NFTMarketplace from "./Marketplace";
 import logo from "../assets/conversia-lg.png";
 import { useWallet } from "@suiet/wallet-kit";
 import { useNavigate } from "react-router-dom";
@@ -30,6 +31,7 @@ const Header: React.FC<HeaderProps> = ({
   const [showMarket, setShowMarket] = useState(false);
   const wallet = useWallet();
   const navigate = useNavigate();
+  const network = "testnet";
 
   // Redirect to /landing if wallet is disconnected
   useEffect(() => {
@@ -82,13 +84,14 @@ const Header: React.FC<HeaderProps> = ({
             className="flex items-center gap-2 hover:opacity-80"
           >
             <IoIosWater className="text-blue-200 text-2xl" />
-            NFT
+            Your NFT
           </button>
           <button
             onClick={() => setShowMarket(true)}
             className="flex items-center gap-2 hover:opacity-80"
           >
-            <FaImages className="text-red-400 text-2xl" />
+            <FaBasketShopping className="text-red-400 text-2xl" />
+            Shop
           </button>
         </nav>
       </header>
@@ -121,7 +124,13 @@ const Header: React.FC<HeaderProps> = ({
           }}
         />
       )}
-      {showNft && <NFTGallery onClose={() => setShowNft(false)} />}
+      {showNft && (
+        <NFTGallery
+          onClose={() => setShowNft(false)}
+          walletAddress={wallet.account?.address || ""}
+          network={network} // adjust according to your wallet provider's network info
+        />
+      )}
       {showMarket && <NFTMarketplace onClose={() => setShowMarket(false)} />}
     </>
   );
