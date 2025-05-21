@@ -34,7 +34,7 @@ const App: React.FC<InterviewProps> = () => {
   const [backgroundUrl, setBackgroundUrl] = useState<string>(bgImage); // use default bg as fallback
   const storedBypass = localStorage.getItem("bypassWallet");
   const walletAddress = wallet.account?.address ?? storedBypass;
-  const host = process.env.HOST
+  const host = import.meta.env.HOST;
 
   // Hide intro after animation finishes
   useEffect(() => {

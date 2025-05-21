@@ -27,21 +27,21 @@ const Profile: React.FC<ProfileProps> = ({ onClose }) => {
     digest: string;
     timestampMs?: string;
   }
-  
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [ownedNFTs, setOwnedNFTs] = useState<
     { name: string; objectId: string }[]
   >([]);
   const [suiBalance, setSuiBalance] = useState<string>("0");
   const [nftCount, setNftCount] = useState<number>(0);
-  const host = process.env.HOST;
+  const host = import.meta.env.HOST;
 
   useEffect(() => {
     const fetchUserData = async () => {
       if (!wallet.account?.address) return;
 
       try {
-        const res = await fetch( `${host}/api/conversia/users`, {
+        const res = await fetch(`${host}/api/conversia/users`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
