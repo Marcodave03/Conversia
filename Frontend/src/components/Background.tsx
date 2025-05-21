@@ -67,7 +67,7 @@ const Background: React.FC<BackgroundProps> = ({
       owned: false,
     },
   ]);
-  const host = import.meta.env.HOST;
+  const host = import.meta.env.VITE_HOST;
 
   useEffect(() => {
     fetch(`${host}/api/conversia/users/2/background`)

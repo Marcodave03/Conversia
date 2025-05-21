@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 const Wallet: React.FC = () => {
   const wallet = useWallet();
   const navigate = useNavigate();
-  const host = import.meta.env.HOST;
+  const host = import.meta.env.VITE_HOST;
 
   useEffect(() => {
     const createUserAndRedirect = async () => {

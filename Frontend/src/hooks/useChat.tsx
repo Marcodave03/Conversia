@@ -30,7 +30,7 @@ interface ChatProviderProps {
   children: ReactNode;
 }
 
-const backendUrl = import.meta.env.HOST;
+const backendUrl = import.meta.env.VITE_HOST;
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 

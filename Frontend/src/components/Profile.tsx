@@ -34,7 +34,7 @@ const Profile: React.FC<ProfileProps> = ({ onClose }) => {
   >([]);
   const [suiBalance, setSuiBalance] = useState<string>("0");
   const [nftCount, setNftCount] = useState<number>(0);
-  const host = import.meta.env.HOST;
+  const host = import.meta.env.VITE_HOST;
 
   useEffect(() => {
     const fetchUserData = async () => {

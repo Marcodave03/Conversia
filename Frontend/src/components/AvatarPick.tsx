@@ -144,7 +144,7 @@ const AvatarPick: React.FC<AvatarPickProps> = ({
 }) => {
   const [avatars, setAvatars] = useState<Avatar[]>(avatarCatalog);
   const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null);
-  const host = import.meta.env.HOST;
+  const host = import.meta.env.VITE_HOST;
 
   useEffect(() => {
     fetch(`${host}/api/conversia/users/${userId}/avatars`)
