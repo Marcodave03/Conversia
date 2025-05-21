@@ -3770,6 +3770,7 @@
         }
     },
     "dependencies": {
+        "@langchain/core": "^0.3.56",
         "bcrypt": "^5.1.1",
         "child_process": "^1.0.2",
         "cors": "^2.8.5",
