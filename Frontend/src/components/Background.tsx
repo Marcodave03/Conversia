@@ -67,9 +67,10 @@ const Background: React.FC<BackgroundProps> = ({
       owned: false,
     },
   ]);
+  const host = process.env.HOST;
 
   useEffect(() => {
-    fetch("http://localhost:5555/api/conversia/users/2/background")
+    fetch(`${host}/api/conversia/users/2/background`)
       .then((res) => res.json())
       .then((data) => {
         const ownedImageIds = data.map((b: { image_id: number }) => b.image_id);

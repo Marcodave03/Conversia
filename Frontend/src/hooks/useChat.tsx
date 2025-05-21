@@ -24,7 +24,7 @@ interface ChatProviderProps {
   children: ReactNode;
 }
 
-const backendUrl = import.meta.env.VITE_API_URL || "http://localhost:5555";
+const backendUrl = process.env.HOST;
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
 

@@ -6,13 +6,14 @@ import { useNavigate } from "react-router-dom";
 const Wallet: React.FC = () => {
   const wallet = useWallet();
   const navigate = useNavigate();
+  const host = process.env.HOST;
 
   useEffect(() => {
     const createUserAndRedirect = async () => {
       if (wallet.status === "connected" && wallet.account?.address) {
         try {
           // Send user info to backend
-          const res = await fetch("http://localhost:5555/api/conversia/users", {
+          const res = await fetch(`${host}/api/conversia/users`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
