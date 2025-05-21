@@ -1,17 +1,19 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import App from './App';
-import LandingPage from '../src/pages/LandingPage';
-import './App.css';
-import { AuthProvider } from '../src/context/AuthProvider';
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
+import App from "./App";
+import LandingPage from "./pages/LandingPage";
+import "./App.css";
+import { WalletProvider } from "@suiet/wallet-kit";
 import ProtectedRoute from './components/ProtectedRoute';
 
-const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
+const root = ReactDOM.createRoot(
+  document.getElementById("root") as HTMLElement
+);
 
 root.render(
   <React.StrictMode>
-    <AuthProvider>
+    <WalletProvider>
       <Router>
         <Routes>
           <Route path="/landing" element={<LandingPage />} />
@@ -25,6 +27,6 @@ root.render(
           />
         </Routes>
       </Router>
-    </AuthProvider>
+    </WalletProvider>
   </React.StrictMode>
 );

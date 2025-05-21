@@ -1,60 +1,149 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaUser, FaBook, FaImages } from "react-icons/fa";
-import About from "./About";
-import Memory from "./Memory";
+import { FaBasketShopping } from "react-icons/fa6";
+import { IoIosWater } from "react-icons/io";
+import About from "./Background";
 import Profile from "./Profile";
-import "../styling/Header.css";
+import AvatarPick from "./AvatarPick";
+import NFTGallery from "./NftMarket";
+import NFTMarketplace from "./Marketplace";
+import logo from "../assets/conversia-lg.png";
+import { useWallet } from "@suiet/wallet-kit";
+import { useNavigate } from "react-router-dom";
+import ResponsiveHeader from "./ResponsiveHeader";
 
-const Header: React.FC = () => {
-  const [showAbout, setShowAbout] = useState(false);
-  const [showMemory, setShowMemory] = useState(false);
+type HeaderProps = {
+  setModelUrl: (url: string) => void;
+  setBackgroundUrl: (url: string) => void;
+  setModelId: (id: number) => void;
+  userId: number;
+};
+
+const Header: React.FC<HeaderProps> = ({
+  setModelUrl,
+  setBackgroundUrl,
+  setModelId,
+  userId,
+}) => {
   const [showProfile, setShowProfile] = useState(false);
+  const [showBackground, setShowBackground] = useState(false);
+  const [showAvatar, setShowAvatar] = useState(false);
+  const [showNft, setShowNft] = useState(false);
+  const [showMarket, setShowMarket] = useState(false);
+  const wallet = useWallet();
+  const navigate = useNavigate();
+  const network = "testnet";
+
+  useEffect(() => {
+    if (wallet.status === "disconnected") {
+      navigate("/landing");
+    }
+  }, [wallet.status, navigate]);
 
   return (
     <>
-      {/* Header with rounded corners and glass effect */}
-      <header
-        className="h-24 px-12 flex items-center justify-center shadow-md rounded-full"
-        style={{
-          backgroundColor: "rgba(236, 235, 235, 0.17)",
-          backdropFilter: "blur(30px)",
-          position: "absolute",
-          top: "3rem",
-          left: "50%",        
-          transform: "translateX(-50%)",
-          width: "fit-content",
-          zIndex: 50,
-        }}
-      >
-        <nav className="flex gap-8 text-3xl text-white">
+      {/* Desktop Navbar (Logo on Left, Menu Centered, Button Right) */}
+      <div className="hidden md:flex fixed top-6 left-4 right-4 z-50 items-center justify-between">
+        {/* Logo (Left) */}
+        <div className="flex items-center gap-2 bg-white/10 backdrop-blur-xl rounded-full shadow-md px-4 py-2">
+          <img
+            src={logo}
+            alt="Conversia Logo"
+            className="h-10 w-auto object-contain"
+          />
+        </div>
 
-          <button
-            onClick={() => setShowAbout(true)}
-            className="flex items-center hover:opacity-80 cursor-pointer"
-          >
-            <FaBook className="mr-2 text-teal-400 text-4xl" /> Activities
-          </button>
-
-          <button
-            onClick={() => setShowMemory(true)}
-            className="flex items-center hover:opacity-80 cursor-pointer"
-          >
-            <FaImages className="mr-2 text-blue-400 text-4xl" /> Memory
-          </button>
-
+        {/* Menu (Center) */}
+        <div className="flex gap-8 text-white text-xl font-semibold bg-white/10 backdrop-blur-xl rounded-full shadow-lg px-8 py-4">
           <button
             onClick={() => setShowProfile(true)}
-            className="flex items-center hover:opacity-80 cursor-pointer"
+            className="flex items-center gap-2 hover:opacity-80"
           >
-            <FaUser className="mr-2 text-yellow-400 text-4xl" /> Profile
+            <FaBook className="text-teal-400 text-2xl" />
+            Profile
           </button>
-        </nav>
-      </header>
+          <button
+            onClick={() => setShowBackground(true)}
+            className="flex items-center gap-2 hover:opacity-80"
+          >
+            <FaImages className="text-red-400 text-2xl" />
+            Background
+          </button>
+          <button
+            onClick={() => setShowAvatar(true)}
+            className="flex items-center gap-2 hover:opacity-80"
+          >
+            <FaUser className="text-yellow-400 text-2xl" />
+            Avatar
+          </button>
+          <button
+            onClick={() => setShowNft(true)}
+            className="flex items-center gap-2 hover:opacity-80"
+          >
+            <IoIosWater className="text-blue-200 text-2xl" />
+            Your NFT
+          </button>
+          <button
+            onClick={() => setShowMarket(true)}
+            className="flex items-center gap-2 hover:opacity-80"
+          >
+            <FaBasketShopping className="text-red-400 text-2xl" />
+            Shop
+          </button>
+        </div>
 
-      {/* Popup Components */}
-      {showAbout && <About onClose={() => setShowAbout(false)} />}
-      {showMemory && <Memory onClose={() => setShowMemory(false)} />}
+        {/* Disconnect Button (Right) */}
+        {wallet.status === "connected" && (
+          <button
+            onClick={wallet.disconnect}
+            className="bg-red-600 hover:bg-red-700 text-white font-medium px-6 py-3 rounded-full shadow-lg transition"
+          >
+            Disconnect
+          </button>
+        )}
+      </div>
+
+      {/* Mobile Nav */}
+      <div className="block md:hidden">
+        <ResponsiveHeader
+          setModelUrl={setModelUrl}
+          setModelId={setModelId}
+          setBackgroundUrl={setBackgroundUrl}
+          userId={userId}
+          setShowAvatar={setShowAvatar}
+          setShowBackground={setShowBackground}
+          setShowProfile={setShowProfile}
+          setShowNft={setShowNft}
+          setShowMarket={setShowMarket}
+        />
+      </div>
+
+      {/* Popups */}
       {showProfile && <Profile onClose={() => setShowProfile(false)} />}
+      {showBackground && (
+        <About
+          onClose={() => setShowBackground(false)}
+          onSelectBackground={(url) => setBackgroundUrl(url)}
+        />
+      )}
+      {showAvatar && (
+        <AvatarPick
+          userId={userId}
+          onClose={() => setShowAvatar(false)}
+          onSelectAvatar={(modelUrl, modelId) => {
+            setModelUrl(modelUrl);
+            setModelId(modelId);
+          }}
+        />
+      )}
+      {showNft && (
+        <NFTGallery
+          onClose={() => setShowNft(false)}
+          walletAddress={wallet.account?.address || ""}
+          network={network} // adjust according to your wallet provider's network info
+        />
+      )}
+      {showMarket && <NFTMarketplace onClose={() => setShowMarket(false)} />}
     </>
   );
 };

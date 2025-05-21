@@ -13,18 +13,31 @@ const hashAddress = (address) => {
 export const CreateUser = async (req, res) => {
     try {
         const { sui_id, username } = req.body;
-        const hashedSuiId = hashSuiId(sui_id);  // Hash instead of encrypt
+        const hashedSuiId = hashSuiId(sui_id); // Hash the wallet address
 
+        // Check if user already exists
+        const existingUser = await User.findOne({ where: { sui_id: hashedSuiId } });
+
+        if (existingUser) {
+            return res.status(200).json({
+                message: 'User already exists',
+                user: existingUser
+            });
+        }
+
+        // Create new user
         const newUser = await User.create({
             sui_id: hashedSuiId,
             username
         });
 
         res.status(201).json({ message: 'User created successfully', user: newUser });
+
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
+
 
 export const GetUser = async (req, res) => {
     try {

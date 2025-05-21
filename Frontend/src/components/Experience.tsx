@@ -10,6 +10,7 @@ type ExperienceProps = {
   animation: string | null;
   mouthCues: MouthCue[];
   audioDuration: number;
+  modelUrl: string;
 };
 
 export const Experience: React.FC<ExperienceProps> = ({
@@ -17,25 +18,29 @@ export const Experience: React.FC<ExperienceProps> = ({
   animation,
   mouthCues,
   audioDuration,
+  modelUrl,
 }) => {
   const cameraControls = useRef<CameraControls>(null);
 
   useEffect(() => {
     cameraControls.current?.setLookAt(0, 2, 5, 0, 1.5, 0);
-  }, []);
+  }, [modelUrl]);
 
   return (
     <>
       <CameraControls ref={cameraControls} />
       <Environment preset="sunset" />
       <Avatar
+        key={modelUrl}
         expression={expression}
         animation={animation}
         mouthCues={mouthCues}
         audioDuration={audioDuration}
-        modelUrl="/models/girl3.glb"
+        modelUrl={modelUrl}
       />
       <ContactShadows opacity={0.7} />
     </>
   );
 };
+
+

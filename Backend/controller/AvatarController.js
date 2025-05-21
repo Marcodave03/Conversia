@@ -31,15 +31,21 @@ const AvatarController = {
 
   async getAvatarsByUser(req, res) {
     try {
-      const { user_id } = req.params; // Use user_id from params
-
+      const { user_id } = req.params;
+  
       // Check if user exists
-      const user = await User.findByPk(user_id, { include: Avatar });
+      const user = await User.findByPk(user_id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-
-      res.status(200).json(user.Avatars);
+  
+      // Now fetch avatars for that user directly
+      const avatars = await Avatar.findAll({
+        where: { user_id },
+        attributes: ["avatar_id", "model_id", "chat_id", "createdAt", "updatedAt", "user_id"],
+      });
+  
+      res.status(200).json(avatars);
     } catch (error) {
       res.status(500).json({ message: error.message });
     }

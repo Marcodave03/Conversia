@@ -1,6 +1,6 @@
 import { useAnimations, useGLTF } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTF } from "three-stdlib";
 
@@ -143,7 +143,7 @@ export function Avatar({
     }
 
     if (!animation) {
-      idleAction.reset().fadeIn(0.5).play();
+      idleAction.reset().play();
     } else {
       const requestedAction = actions[animation];
       if (requestedAction) {
@@ -333,8 +333,15 @@ export function Avatar({
 }
 
 useGLTF.preload("/models/girl1.glb");
-useGLTF.preload("/models/boy.glb");
 useGLTF.preload("/models/girl2.glb");
 useGLTF.preload("/models/girl3.glb");
-useGLTF.preload("/models/girl2benertapi.glb");
+useGLTF.preload("/models/girl4.glb");
+useGLTF.preload("/models/girl5.glb");
+useGLTF.preload("/models/girl6.glb");
+useGLTF.preload("/models/girl7.glb");
+useGLTF.preload("/models/girl8.glb");
+useGLTF.preload("/models/girl9.glb");
+useGLTF.preload("/models/girl10.glb");
+useGLTF.preload("/models/girl11.glb");
+useGLTF.preload("/models/girl12.glb");
 useGLTF.preload("/models/animations.glb");
