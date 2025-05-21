@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { FaUser, FaBook, FaImages, FaBars, FaTimes } from "react-icons/fa";
+import { FaBasketShopping } from "react-icons/fa6";
 import { IoIosWater } from "react-icons/io";
 import logo from "../assets/conversia-lg.png";
 import { useWallet } from "@suiet/wallet-kit";
@@ -13,6 +14,7 @@ interface ResponsiveHeaderProps {
   setShowAvatar: (val: boolean) => void;
   setShowBackground: (val: boolean) => void;
   setShowNft: (val: boolean) => void;
+  setShowMarket: (val: boolean) => void;
 }
 
 const ResponsiveHeader: React.FC<ResponsiveHeaderProps> = ({
@@ -20,6 +22,7 @@ const ResponsiveHeader: React.FC<ResponsiveHeaderProps> = ({
   setShowAvatar,
   setShowBackground,
   setShowNft,
+  setShowMarket,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const wallet = useWallet();
@@ -49,7 +52,6 @@ const ResponsiveHeader: React.FC<ResponsiveHeaderProps> = ({
           <button
             onClick={() => {
               setShowProfile(true);
-              setMenuOpen(false);
             }}
           >
             <FaBook className="inline mr-2" /> Profile
@@ -73,10 +75,16 @@ const ResponsiveHeader: React.FC<ResponsiveHeaderProps> = ({
           <button
             onClick={() => {
               setShowNft(true);
-              setMenuOpen(false);
             }}
           >
             <IoIosWater className="inline mr-2" /> NFT
+          </button>
+          <button
+            onClick={() => {
+              setShowMarket(true);
+            }}
+          >
+            <FaBasketShopping className="inline mr-2" /> Shop
           </button>
           {wallet.status === "connected" && (
             <button onClick={wallet.disconnect} className="text-red-400">
@@ -84,10 +92,10 @@ const ResponsiveHeader: React.FC<ResponsiveHeaderProps> = ({
             </button>
           )}
           <button
-            className="text-sm text-gray-400 underline mt-4"
             onClick={() => setMenuOpen(false)}
+            className="absolute top-0 right-0 mr-4 px-4 py-2 text-xl hover:bg-gray-700 transition"
           >
-            Close Menu
+            <FaTimes />
           </button>
         </div>
       )}

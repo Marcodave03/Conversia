@@ -114,6 +114,7 @@ const Header: React.FC<HeaderProps> = ({
           setShowBackground={setShowBackground}
           setShowProfile={setShowProfile}
           setShowNft={setShowNft}
+          setShowMarket={setShowMarket}
         />
       </div>
 

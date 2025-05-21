@@ -32,6 +32,8 @@ const App: React.FC<InterviewProps> = () => {
   );
   const [modelUrl, setModelUrl] = useState<string>("/models/girl1.glb"); // default avatar
   const [backgroundUrl, setBackgroundUrl] = useState<string>(bgImage); // use default bg as fallback
+  const storedBypass = localStorage.getItem("bypassWallet");
+  const walletAddress = wallet.account?.address ?? storedBypass;
 
   // Hide intro after animation finishes
   useEffect(() => {
@@ -67,7 +69,10 @@ const App: React.FC<InterviewProps> = () => {
       }
     };
 
-    if (wallet.status === "connected") {
+    // if (wallet.status === "connected") {
+    //   ensureUserExists();
+    // }
+    if (walletAddress) {
       ensureUserExists();
     }
   }, [wallet]);
@@ -419,7 +424,7 @@ const App: React.FC<InterviewProps> = () => {
 
               {/* Desktop Chat Frame */}
               <div
-                className="absolute top-0 left-[55%] w-[43%] z-30 overflow-y-auto space-y-4 px-4 pt-4 pb-[12vh]"
+                className="absolute top-0 left-[55%] w-[43%] z-30 overflow-y-auto space-y-4 px-4 pt-4 pb-[4vh]"
                 style={{
                   top: "96px",
                   height: "calc(100% - 160px)",

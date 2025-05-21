@@ -52,8 +52,14 @@ export const MobileChatFrame: React.FC<MobileChatFrameProps> = ({
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, typingText]);
+    if (!isChatOpen) return;
+
+    const timeout = setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 50);
+
+    return () => clearTimeout(timeout);
+  }, [messages.length, typingText, isChatOpen]);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-transparent">
@@ -78,13 +84,9 @@ export const MobileChatFrame: React.FC<MobileChatFrameProps> = ({
       {/* Expandable Chat Bubble Frame (positioned above input) */}
       <motion.div
         initial={false}
-        animate={{ height: isChatOpen ? 320 : 60 }}
+        animate={{ height: isChatOpen ? 320 : 48 }}
         transition={{ type: "tween", duration: 0.5 }}
         className="absolute bottom-[64px] left-4 right-4 z-20 rounded-xl shadow-xl backdrop-blur-md flex flex-col"
-        style={{
-          background:
-            "linear-gradient(to top, rgba(255,255,255,0.95), rgba(255,255,255,0.3))",
-        }}
       >
         {/* Toggle Chat Button */}
         <div className="flex justify-center py-2">
