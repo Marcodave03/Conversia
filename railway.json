@@ -1,6 +1,5 @@
 {
   "build": {
-    "root": "Backend",
-    "builder": "npm"
+    "root": "Backend"
   }
 }
