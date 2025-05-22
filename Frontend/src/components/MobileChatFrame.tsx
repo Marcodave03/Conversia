@@ -101,6 +101,16 @@ export const MobileChatFrame: React.FC<MobileChatFrameProps> = ({
         {/* Chat messages */}
         {isChatOpen && (
           <div className="flex-1 px-3 pt-2 overflow-y-auto space-y-2">
+            {/* Friendly prompt if no messages yet */}
+            {messages.length === 0 && !isTyping && !loadingTranscription && (
+              <div className="flex justify-center mt-8">
+                <div className="bg-white bg-opacity-90 text-gray-700 text-center px-4 py-3 rounded-xl text-sm shadow-md max-w-[80%]">
+                  ✨ <span className="font-medium">Start chatting</span> by
+                  typing a message below or tap the mic to speak!
+                </div>
+              </div>
+            )}
+
             {messages.map((msg, index) => (
               <div
                 key={index}
